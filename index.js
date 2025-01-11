@@ -30,6 +30,7 @@ app.use(express.json())
 app.use(cors({
     origin: 'https://www.tuplrc-cla.com',
     credentials: true,
+    methods: ["GET", "POST"],
 }));
 
 // app.use((req,res,next)=>{
@@ -78,10 +79,11 @@ const io = new Server(server, {
         credentials: true,
         //path: '/socket.io',
         //transports: ['websocket'],
-    },
-    transports: ["websocket"], // Force WebSocket transport
-    pingInterval: 25000,
-    pingTimeout: 20000,
+        transports: ["websocket"], // Force WebSocket transport
+        pingInterval: 25000,
+        pingTimeout: 20000,
+    }
+
 });
 
 // Handle WebSocket connections
