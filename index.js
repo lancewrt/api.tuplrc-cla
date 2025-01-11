@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+//import dotenv from 'dotenv';
 import express from "express";
 import mysql from "mysql2";    
 import mysqlPromise from 'mysql2/promise';
@@ -17,7 +17,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import validateTupIdRouter from './routes/validateTupId.js'; // Adjust the path if neededimport cron from 'node-cron'
 
 
-dotenv.config();
+//dotenv.config();
 
 const dbPromise = mysqlPromise.createPool({ host: process.env.DB_HOST_LOCAL,
     user: process.env.DB_USER_LOCAL,
