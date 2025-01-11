@@ -28,9 +28,8 @@ const app = express()
 app.use(cookieParser());
 app.use(express.json())
 app.use(cors({
-    origin: ['http://localhost:3000','http://localhost:3002'],
-    methods: 'GET,POST,PUT,DELETE',
-    credentials:true
+    origin: '*',
+    methods: 'GET,POST,PUT,DELETE,OPTIONS',
 }));
 
 // app.use((req,res,next)=>{
@@ -74,7 +73,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         // URL for frontend
-        origin: ['http://localhost:3000','http://localhost:3002'],
+        origin: '*',
         
     }
 });
