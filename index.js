@@ -72,7 +72,10 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         // URL for frontend
-        origin: '*',
+        origin: 'https://www.tuplrc-cla.com',
+        credentials: true,
+
+        
         
     }
 });
