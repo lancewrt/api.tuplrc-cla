@@ -60,7 +60,7 @@ db.connect((err) => {
 /* (async () => {
     try {
         const connection = await db.getConnection();
-        console.log("Connected to the database!");
+        console.log("Connected to the da
         connection.release(); // Release the connection back to the pool
     } catch (error) {
         console.error("Error connecting to the database:", error);
@@ -82,9 +82,10 @@ const io = new Server(server, {
         origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
         credentials: true,
         methods: ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
-        transports: ["polling","websocket"], // Force WebSocket transport
+        transports: ["websocket"], // Force WebSocket transport
         pingInterval: 25000,
         pingTimeout: 20000,
+        path: "/socket.io",
     }
 
 });
@@ -105,7 +106,7 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3306,()=>{
+server.listen(80,()=>{
     console.log('this is the backend')
 })
 
