@@ -74,6 +74,7 @@ const io = new Server(server, {
     cors: {
         // URL for frontend
         origin: 'https://www.tuplrc-cla.com',
+        methods: ["GET", "POST"],
         credentials: true,
         //path: '/socket.io',
         //transports: ['websocket'],
