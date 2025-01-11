@@ -1,0 +1,4 @@
+RewriteEngine On
+RewriteCond %{HTTP:Upgrade} =websocket [NC]
+RewriteCond %{REQUEST_URI} ^/socket.io/ [NC]
+RewriteRule /(.*) ws://127.0.0.1:PORT/$1 [P,L]
