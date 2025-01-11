@@ -76,8 +76,11 @@ const io = new Server(server, {
         origin: 'https://www.tuplrc-cla.com',
         credentials: true,
         //path: '/socket.io',
-        transports: ['websocket'],
-    }
+        //transports: ['websocket'],
+    },
+    transports: ["websocket"], // Force WebSocket transport
+    pingInterval: 25000,
+    pingTimeout: 20000,
 });
 
 // Handle WebSocket connections
