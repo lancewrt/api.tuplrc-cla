@@ -82,7 +82,7 @@ const io = new Server(server, {
         origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
         credentials: true,
         methods: ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
-        transports: ["websocket"], // Force WebSocket transport
+        transports: ["polling","websocket"], // Force WebSocket transport
         pingInterval: 25000,
         pingTimeout: 20000,
     }
@@ -105,7 +105,7 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000,()=>{
+server.listen(3306,()=>{
     console.log('this is the backend')
 })
 
