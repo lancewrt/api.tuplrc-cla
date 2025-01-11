@@ -4246,6 +4246,6 @@ app.use((req, res, next) => {
 app.use('/', validateTupIdRouter); // Connect the router
 
 
-server.listen(3001,()=>{
+server.listen(3306,()=>{
     console.log('this is the backend')
 })
