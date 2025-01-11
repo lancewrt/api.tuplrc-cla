@@ -75,19 +75,27 @@ const io = new Server(server, {
         // URL for frontend
         origin: 'https://www.tuplrc-cla.com',
         credentials: true,
-        path: '/socket.io',
-        transports: ['websocket']
+        //path: '/socket.io',
+        transports: ['websocket'],
     }
 });
 
 // Handle WebSocket connections
-io.on('connection', (socket) => {
+/* io.on('connection', (socket) => {
     // Listen for an event from the client
     socket.on('newResource', () => {
         console.log('New data inserted');
         io.emit('updatedCatalog');
     });
+}); */
+
+io.on('connection', (socket) => {
+    console.log(`User connected: ${socket.id}`);
+    socket.on('disconnect', () => {
+        console.log(`User disconnected: ${socket.id}`);
+    });
 });
+
 
 // Function to log user actions
 const logAuditAction = (userId, actionType, tableName, recordId, oldValue = null, newValue = null) => {
