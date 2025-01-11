@@ -28,9 +28,9 @@ const app = express()
 app.use(cookieParser());
 app.use(express.json())
 app.use(cors({
-    origin: 'https://www.tuplrc-cla.com',
-    credentials: true,
-    methods: ["GET", "POST"],
+    origin: '*',
+    //credentials: true,
+    //methods: ["GET", "POST"],
 }));
 
 // app.use((req,res,next)=>{
@@ -74,9 +74,9 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         // URL for frontend
-        origin: 'https://www.tuplrc-cla.com',
-        methods: ["GET", "POST"],
-        credentials: true,
+        origin: '*',
+        //methods: ["GET", "POST"],
+        //credentials: true,
         //path: '/socket.io',
         //transports: ['websocket'],
         transports: ["websocket"], // Force WebSocket transport
