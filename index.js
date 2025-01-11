@@ -105,6 +105,9 @@ io.on('connection', (socket) => {
     });
 });
 
+server.listen(3000,()=>{
+    console.log('this is the backend')
+})
 
 // Function to log user actions
 const logAuditAction = (userId, actionType, tableName, recordId, oldValue = null, newValue = null) => {
@@ -4265,6 +4268,3 @@ app.use((req, res, next) => {
 app.use('/', validateTupIdRouter); // Connect the router
 
 
-server.listen(3306,()=>{
-    console.log('this is the backend')
-})
