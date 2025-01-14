@@ -38,6 +38,7 @@ app.use(cors({
 //     next()
 // })
 
+
 // api key for google books
 const apikey = process.env.API_KEY;
 
@@ -3667,7 +3668,7 @@ app.post('/login', async (req, res) => {
             // Optionally store the token as a secure cookie
             res.cookie('authToken', token, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: true,
                 sameSite: 'strict',
                 maxAge: 24 * 60 * 60 * 1000, // 24 hours
             });
