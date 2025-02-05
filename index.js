@@ -979,7 +979,7 @@ app.get('/bookData/:isbn',async (req,res)=>{
 
 /*-----------RETRIEVE DATA-----------*/
 //retrieve list of colleges from database
-app.get('/colleges',(req,res)=>{
+app.get('/college',(req,res)=>{
     const q = 'SELECT * FROM college'
 
     db.query(q,(err,results)=>{
