@@ -978,6 +978,24 @@ app.get('/bookData/:isbn',async (req,res)=>{
 })
 
 /*-----------RETRIEVE DATA-----------*/
+//retrieve list of colleges from database
+app.get('/colleges',(req,res)=>{
+    const q = 'SELECT * FROM college'
+
+    db.query(q,(err,results)=>{
+        if(err) return res.send(err)
+           return res.json(results)
+    })
+})
+//retrieve list of courses from database
+app.get('/course',(req,res)=>{
+    const q = 'SELECT * FROM course'
+
+    db.query(q,(err,results)=>{
+        if(err) return res.send(err)
+           return res.json(results)
+    })
+})
 //retrieve list of department from database
 app.get('/departments',(req,res)=>{
     const q = 'SELECT * FROM department'
@@ -4136,11 +4154,7 @@ app.get('/update-patron/:id', async (req, res) => {
 
         const patronData = results[0];
 
-        // Fetch colleges and courses for dropdown options
-        const [colleges] = await (await dbPromise).execute('SELECT * FROM college');
-        const [courses] = await (await dbPromise).execute('SELECT * FROM course');
-
-        res.json({ patronData, colleges, courses });
+        res.json({ patronData });
     } catch (err) {
         console.error('Error fetching patron data:', err);
         res.status(500).send('Internal Server Error');
