@@ -1914,7 +1914,7 @@ app.post('/checkout', async (req, res) => {
 
 app.get('/getCheckoutRecord', (req, res) => {
 const { resource_id, patron_id } = req.query;
-const query = 'SELECT checkout_id FROM checkout WHERE resource_id = ? AND patron_id = ?';
+const query = 'SELECT checkout_id FROM checkout WHERE resource_id = ? AND patron_id = ? AND status = "borrowed"';
 
 db.query(query, [resource_id, patron_id], (err, results) => {
     if (err) {
