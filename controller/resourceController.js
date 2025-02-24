@@ -140,7 +140,7 @@ const insertThesis = async (resourceId, adviserId,res)=>{
 
 //insert journal and newsletter
 const insertJournalNewsletter = async(jn,res)=>{
-    const q = 'INSERT INTO journalnewsletter (jn_volume, jn_issue, filepath, resource_id,topic_id) VALUES (?, ?, ?, ?,?)';
+    const q = 'INSERT INTO journalnewsletter (jn_volume, jn_issue, filepath, resource_id, topic_id) VALUES (?, ?, ?, ?,?)';
             
     db.query(q, jn, (err, result) => {
         if (err) {
@@ -857,7 +857,7 @@ const getNewsletterJournalResource = (id,res)=>{
         GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_names,
         journalnewsletter.jn_volume,
         journalnewsletter.jn_issue,
-        journalnewsletter.jn_cover
+        journalnewsletter.filepath
     FROM resources
     JOIN resourceauthors ON resourceauthors.resource_id = resources.resource_id
     JOIN author ON resourceauthors.author_id = author.author_id
