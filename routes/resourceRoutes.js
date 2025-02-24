@@ -10,7 +10,7 @@ const storage = multer.diskStorage({
         return cb(null,"./public/images")
     },
     filename:function(req,file,cb){
-        return cb(null,`${Date.now()}_${file.originalname}`)
+        return cb(null,file.originalname)
     }
 })
 
@@ -26,7 +26,6 @@ router.post('/file', upload.single('file'), (req, res) => {
             console.error('Error reading file:', err);
             return res.status(500).send('Error reading file');
         }
-
         // Send the file data as a response
         res.send(data); // This sends the file content to the frontend
         console.log(data)

@@ -3,10 +3,10 @@ import fs, { stat } from 'fs';
 import { logAuditAction } from "./auditController.js";
 import axios from 'axios'
 
-
 /*-------------SAVE RESOURCE----------------- */
 export const saveResource = async (req, res) => {
     console.log('Saving resource...');
+    
     const mediaType = req.body.mediaType;
     const username = req.body.username;
     let adviserFname, adviserLname, filePath, imageFile;
@@ -16,8 +16,8 @@ export const saveResource = async (req, res) => {
     // Handle image upload or URL
     try{
         if (req.file) {
-            filePath = req.file.path;
-            imageFile = fs.readFileSync(filePath); // Read file synchronously
+            filePath = req.file.path.replace(/\\/g, "/").toString();
+            //imageFile = fs.readFileSync(filePath); // Read file synchronously
         } else if (req.body.url) {
             const imageUrl = req.body.url;
             const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
@@ -41,6 +41,8 @@ export const saveResource = async (req, res) => {
             adviserFname = adviser[0];
             adviserLname = adviser[1];
         }
+
+        console.log(filePath)
         
         //authors is in string
         const authors = Array.isArray(req.body.authors)
@@ -53,7 +55,7 @@ export const saveResource = async (req, res) => {
             // Handle books
             const pubId = await checkIfPubExist(pub);
             console.log('Publisher ID:', pubId);
-            await insertBook(imageFile, req.body.isbn, resourceId, pubId, req.body.topic, res, filePath);
+            await insertBook(req.body.isbn, resourceId, pubId, req.body.topic, res, filePath);
         }else if(['2', '3'].includes(mediaType)){
             // insert journal/newsletter in database
             const jn = [
@@ -235,27 +237,33 @@ const insertPublisher = async (pub) => {
 };
 
 //insert book
-const insertBook = async(cover, isbn, resourceId, pubId, topic,res, filePath)=>{
+const insertBook = async(isbn, resourceId, pubId, topic, res, filePath)=>{
     const q = `
-    INSERT INTO book (book_cover, book_isbn, resource_id, pub_id, topic_id) VALUES (?,?,?,?,?)`
+    INSERT INTO book (book_isbn, resource_id, pub_id, topic_id, filepath) VALUES (?,?,?,?,?)`
 
-    const values = [
-        cover,
+    console.log("INSERT BOOK DATA:", {
         isbn,
         resourceId,
         pubId,
-        topic
+        topic,
+        filePath,
+    });
+    
+
+    const values = [
+        isbn || null,
+        Number(resourceId) || 0,
+        Number(pubId) || 0,
+        Number(topic) || 0,
+        filePath || null
     ]
+
+    
 
     db.query(q, values, (err,results)=>{
         if (err) {
             return res.status(500).send(err); 
         }
-        // Cleanup uploaded file
-        if (filePath) {
-            fs.unlinkSync(filePath);
-        }
-        
         // console.log('Book inserted successfully')
         return res.send({status: 201, message:'Book inserted successfully.'});
     })
@@ -820,7 +828,7 @@ const getBookResource = (id,res)=>{
         resources.resource_quantity, 
         resources.resource_title, 
         publisher.pub_name,
-        book.book_cover,
+        book.filepath,
 		book.topic_id 
     FROM resources 
     JOIN resourceauthors ON resourceauthors.resource_id = resources.resource_id 
