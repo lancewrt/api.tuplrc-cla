@@ -87,9 +87,20 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         // URL for frontend
-        origin: ['http://localhost:3000','http://localhost:3002'],
-        
+        //origin: '*',
+        //methods: ["GET", "POST"],
+        //credentials: true,
+        //path: '/socket.io',
+        //transports: ['websocket'],
+        origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
+        transports: ["websocket"], // Force WebSocket transport
+        pingInterval: 25000,
+        pingTimeout: 20000,
+        path: "/socket.io",
     }
+
 });
 
 // Handle WebSocket connections
