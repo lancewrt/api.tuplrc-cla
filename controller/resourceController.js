@@ -61,12 +61,12 @@ export const saveResource = async (req, res) => {
             const jn = [
                 req.body.volume,
                 req.body.issue,
-                imageFile,
+                filePath,
                 resourceId,
                 req.body.topic,
             ];
 
-            await insertJournalNewsletter(jn,res,filePath)
+            await insertJournalNewsletter(jn,res)
         }else{
             //if thesis, after inserting data to authors, resourceauthors, and resources, check if adviser exists. If existing, insert directly to thesis table. if not, insert advisers first then insert to thesis table
             const adviser = [
@@ -139,18 +139,14 @@ const insertThesis = async (resourceId, adviserId,res)=>{
 }
 
 //insert journal and newsletter
-const insertJournalNewsletter = async(jn,res,filePath)=>{
-    const q = 'INSERT INTO journalnewsletter (jn_volume, jn_issue, jn_cover, resource_id,topic_id) VALUES (?, ?, ?, ?,?)';
+const insertJournalNewsletter = async(jn,res)=>{
+    const q = 'INSERT INTO journalnewsletter (jn_volume, jn_issue, filepath, resource_id,topic_id) VALUES (?, ?, ?, ?,?)';
             
     db.query(q, jn, (err, result) => {
         if (err) {
             return res.status(500).send(err); 
         }
-    
-        // Cleanup uploaded file
-        if (filePath) {
-            fs.unlinkSync(filePath);
-        }
+        
         return res.send({status: 201, message:'Journal/Newsletter inserted successfully.'});
     });
 }
