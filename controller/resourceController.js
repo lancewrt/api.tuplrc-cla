@@ -16,8 +16,9 @@ export const saveResource = async (req, res) => {
     // Handle image upload or URL
     try{
         if (req.file) {
-            filePath = req.file.path.replace(/\\/g, "/").toString();
+            // filePath = req.file.path.replace(/\\/g, "/").toString();
             //imageFile = fs.readFileSync(filePath); // Read file synchronously
+            imageFile = req.file.path.replace(/\\/g, "/").toString();
         } else if (req.body.url) {
             const imageUrl = req.body.url;
             const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
@@ -55,13 +56,13 @@ export const saveResource = async (req, res) => {
             // Handle books
             const pubId = await checkIfPubExist(pub);
             console.log('Publisher ID:', pubId);
-            await insertBook(req.body.isbn, resourceId, pubId, req.body.topic, res, filePath);
+            await insertBook(req.body.isbn, resourceId, pubId, req.body.topic, res, imageFile);
         }else if(['2', '3'].includes(mediaType)){
             // insert journal/newsletter in database
             const jn = [
                 req.body.volume,
                 req.body.issue,
-                filePath,
+                imageFile,
                 resourceId,
                 req.body.topic,
             ];
@@ -233,7 +234,7 @@ const insertPublisher = async (pub) => {
 };
 
 //insert book
-const insertBook = async(isbn, resourceId, pubId, topic, res, filePath)=>{
+const insertBook = async(isbn, resourceId, pubId, topic, res, imageFile)=>{
     const q = `
     INSERT INTO book (book_isbn, resource_id, pub_id, topic_id, filepath) VALUES (?,?,?,?,?)`
 
@@ -242,7 +243,7 @@ const insertBook = async(isbn, resourceId, pubId, topic, res, filePath)=>{
         resourceId,
         pubId,
         topic,
-        filePath,
+        imageFile,
     });
     
 
