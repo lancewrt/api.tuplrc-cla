@@ -42,8 +42,6 @@ export const saveResource = async (req, res) => {
             adviserFname = adviser[0];
             adviserLname = adviser[1];
         }
-
-        console.log(filePath)
         
         //authors is in string
         const authors = Array.isArray(req.body.authors)
@@ -252,7 +250,7 @@ const insertBook = async(isbn, resourceId, pubId, topic, res, imageFile)=>{
         Number(resourceId) || 0,
         Number(pubId) || 0,
         Number(topic) || 0,
-        filePath || null
+        imageFile || null
     ]
 
     
