@@ -206,7 +206,7 @@ export const popularChoices = (req, res) => {
             ORDER BY ra.author_id ASC 
             LIMIT 1) AS authors,
             r.resource_published_date,
-            b.book_cover,
+            b.filepath,
             COUNT(r.resource_id) AS borrowed_times
         FROM 
             resources r
