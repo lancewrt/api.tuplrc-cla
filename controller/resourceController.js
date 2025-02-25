@@ -20,9 +20,7 @@ export const saveResource = async (req, res) => {
             //imageFile = fs.readFileSync(filePath); // Read file synchronously
             imageFile = req.file.path.replace(/\\/g, "/").toString();
         } else if (req.body.url) {
-            const imageUrl = req.body.url;
-            const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-            imageFile = response.data;
+            imageFile = req.body.url
         }
         
         // initialize variables based on media type
