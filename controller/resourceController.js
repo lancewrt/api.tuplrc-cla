@@ -421,12 +421,6 @@ export const updateResource = async (req, res) => {
     try{
         if(req.file){
             filePath = req.file.path; // Get the file path 
-            fs.readFile(filePath, (err, data) => {
-                 if (err) {
-                     return res.status(500).send(err); 
-                 }
-                 imageFile = data;
-             })
          }
 
          // initialize variables based on media type
@@ -457,9 +451,9 @@ export const updateResource = async (req, res) => {
             //check publisher if exist
             const pubId = await checkIfPubExist(pub)
             console.log('pubId: ', pubId)
-            editBook(imageFile,req.body.isbn,resourceId,pubId,req.body.topic,res,filePath)
+            editBook(req.body.isbn,resourceId,pubId,req.body.topic,res,filePath)
         }else if(mediaType==='2'|| mediaType==='3'){
-            await editJournalNewsletter(filePath,res,req.body.volume,req.body.issue,imageFile,resourceId)
+            await editJournalNewsletter(filePath,res,req.body.volume,req.body.issue,resourceId)
         }else{
             const adviser = [
                 adviserFname,
@@ -478,15 +472,15 @@ export const updateResource = async (req, res) => {
 };
 
 //edit book
-const editBook = async (cover, isbn, resourceId, pubId, topic,res,filePath)=>{
+const editBook = async (isbn, resourceId, pubId, topic,res,filePath)=>{
     let q;
     let book;
 
     console.log('filepath: ', filePath)
 
     if (typeof filePath === 'string') {
-        q = `UPDATE book SET book_cover = ?, book_isbn = ?, pub_id = ?, topic_id = ? WHERE resource_id = ?`;
-        book = [cover, isbn, pubId, topic, resourceId];
+        q = `UPDATE book SET filepath = ?, book_isbn = ?, pub_id = ?, topic_id = ? WHERE resource_id = ?`;
+        book = [filePath, isbn, pubId, topic, resourceId];
     } else {
         q = `UPDATE book SET book_isbn = ?, pub_id = ?, topic_id = ? WHERE resource_id = ?`;
         book = [isbn, pubId, topic, resourceId];
@@ -497,18 +491,13 @@ const editBook = async (cover, isbn, resourceId, pubId, topic,res,filePath)=>{
         if (err) {
             return res.status(500).send(err); 
         }
-        if(typeof filePath === 'string'){
-            fs.unlink(filePath, (unlinkErr) => {
-                if (unlinkErr) console.error('Error deleting file:', unlinkErr);
-            }); 
-        }
         console.log('Book edited successfully')
         // Successfully inserted 
         return res.send({status: 201, message:'Book edited successfully.'});
     });
 }
 //edit journal/newsletter
-const editJournalNewsletter = async(filePath,res,volume,issue,cover,resourceId)=>{
+const editJournalNewsletter = async(filePath,res,volume,issue,resourceId)=>{
     let q;
     let jn;
 
@@ -519,13 +508,13 @@ const editJournalNewsletter = async(filePath,res,volume,issue,cover,resourceId)=
             SET
                 jn_volume = ?,
                 jn_issue = ?,
-                jn_cover = ?
+                filepath = ?
                 WHERE
                 resource_id = ?`;
         jn = [
                 volume,
                 issue,
-                cover,
+                filePath,
                 resourceId
         ]
         }else{
@@ -549,11 +538,6 @@ const editJournalNewsletter = async(filePath,res,volume,issue,cover,resourceId)=
                 return res.status(500).send(err); 
             }
 
-            if(typeof filePath === 'string'){
-                fs.unlink(filePath, (unlinkErr) => {
-                    if (unlinkErr) console.error('Error deleting file:', unlinkErr);
-                }); 
-            }
             return res.send({status:201,message:'Journal/Newsletter edited successfully.'});
         });
 }
@@ -833,7 +817,7 @@ const getBookResource = (id,res)=>{
     LEFT JOIN book ON book.resource_id = resources.resource_id 
     LEFT JOIN publisher ON book.pub_id = publisher.pub_id 
     WHERE resources.resource_id = ?
-    GROUP BY  resources.resource_id`
+    GROUP BY resources.resource_id`
 
     db.query(q,[id],(err,result)=>{
         if(err) return res.send(err)
