@@ -6,7 +6,7 @@ export const featuredBooks = (req, res) => {
     SELECT 
         resources.resource_title, 
         resources.resource_id, 
-        book.book_cover as resource_cover, 
+        book.filepath as resource_cover, 
         GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_name
     FROM resourceauthors
     JOIN resources ON resourceauthors.resource_id = resources.resource_id
@@ -34,7 +34,7 @@ export const journalNewsletter = (req, res) => {
     SELECT 
         resources.resource_title, 
         resources.resource_id, 
-        journalnewsletter.jn_cover as resource_cover, 
+        journalnewsletter.filepath as resource_cover, 
         GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_name
     FROM resourceauthors
     JOIN resources ON resourceauthors.resource_id = resources.resource_id
@@ -62,7 +62,7 @@ export const featuredBook = (req, res) => {
         resources.resource_title,
         resources.resource_description,
         resources.resource_id, 
-        book.book_cover, 
+        book.filepath, 
         GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_name
     FROM resourceauthors
     JOIN resources ON resourceauthors.resource_id = resources.resource_id
@@ -103,8 +103,8 @@ export const resourcesView = (req, res) => {
             ELSE NULL
         END AS topic_name,
         CASE
-            WHEN resources.type_id = '1' THEN book.book_cover
-            WHEN resources.type_id IN ('2', '3') THEN journalnewsletter.jn_cover
+            WHEN resources.type_id = '1' THEN book.filepath
+            WHEN resources.type_id IN ('2', '3') THEN journalnewsletter.filepath
             ELSE NULL
         END AS resource_cover,
         topic.topic_row_no,
@@ -141,8 +141,8 @@ export const resourcesView = (req, res) => {
                     resources.resource_id, 
                     resources.type_id,
                     CASE
-                        WHEN resources.type_id = '1' THEN book.book_cover
-                        WHEN resources.type_id IN ('2', '3') THEN journalnewsletter.jn_cover
+                        WHEN resources.type_id = '1' THEN book.filepath
+                        WHEN resources.type_id IN ('2', '3') THEN journalnewsletter.filepath
                         ELSE NULL
                     END AS resource_cover,
                     GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_name
@@ -219,8 +219,8 @@ export const resources = (req, res) => {
             resources.resource_id, 
             resources.type_id,
             CASE
-                WHEN resources.type_id = '1' THEN book.book_cover
-                WHEN resources.type_id = '2' OR resources.type_id = '3' THEN journalnewsletter.jn_cover
+                WHEN resources.type_id = '1' THEN book.filepath
+                WHEN resources.type_id = '2' OR resources.type_id = '3' THEN journalnewsletter.filepath
             ELSE NULL
             END AS resource_cover,
             GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_name

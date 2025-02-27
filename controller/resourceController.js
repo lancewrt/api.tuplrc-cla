@@ -234,15 +234,6 @@ const insertBook = async(isbn, resourceId, pubId, topic, res, imageFile)=>{
     const q = `
     INSERT INTO book (book_isbn, resource_id, pub_id, topic_id, filepath) VALUES (?,?,?,?,?)`
 
-    console.log("INSERT BOOK DATA:", {
-        isbn,
-        resourceId,
-        pubId,
-        topic,
-        imageFile,
-    });
-    
-
     const values = [
         isbn || null,
         Number(resourceId) || 0,
@@ -250,8 +241,6 @@ const insertBook = async(isbn, resourceId, pubId, topic, res, imageFile)=>{
         Number(topic) || 0,
         imageFile || null
     ]
-
-    
 
     db.query(q, values, (err,results)=>{
         if (err) {
