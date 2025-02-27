@@ -13,7 +13,7 @@ export const featuredBooks = (req, res) => {
     JOIN author ON resourceauthors.author_id = author.author_id
     JOIN book ON book.resource_id = resources.resource_id
     WHERE resources.type_id = '1'
-    GROUP BY resources.resource_id, resources.resource_title, book.book_cover
+    GROUP BY resources.resource_id, resources.resource_title, book.filepath
     ORDER BY RAND()
     LIMIT 10
     `;
@@ -41,7 +41,7 @@ export const journalNewsletter = (req, res) => {
     JOIN author ON resourceauthors.author_id = author.author_id
     JOIN journalnewsletter ON journalnewsletter.resource_id = resources.resource_id
     WHERE resources.type_id = '2' OR resources.type_id = '3'  
-    GROUP BY resources.resource_id, resources.resource_title, journalnewsletter.jn_cover
+    GROUP BY resources.resource_id, resources.resource_title, journalnewsletter.filepath
     ORDER BY RAND()
     LIMIT 10`;
 
@@ -70,7 +70,7 @@ export const featuredBook = (req, res) => {
     JOIN book ON book.resource_id = resources.resource_id
     WHERE resources.resource_description NOT LIKE '%n/a%' AND 
     resources.type_id='1'
-    GROUP BY resources.resource_id, resources.resource_title, book.book_cover
+    GROUP BY resources.resource_id, resources.resource_title, book.filepath
     LIMIT 1`;
 
     db.query(q, (err, results) => {
