@@ -18,7 +18,7 @@ export const logAuditAction = (userId, actionType, tableName, recordId, oldValue
 };
 
 export const getAudit = (req, res) => {
-    const q = `SELECT * FROM audit_log ORDER BY audit_id DESC`;
+    const q = `SELECT * FROM audit_log`;
 
     db.query(q, (err, results) => {
         if (err) {

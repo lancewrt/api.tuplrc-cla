@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { db } from "../config/db.js";
-import { logAuditAction } from "./auditController.js";
 
 dotenv.config();
 
@@ -51,20 +50,12 @@ export const login = async (req, res) => {
                 maxAge: 24 * 60 * 60 * 1000, // 24 hours
             });
 
-            logAuditAction(
-                username,
-                'SELECT',
-                'staffaccount',
-                null,
-                null,
-                JSON.stringify("Logged In ")
-            );
-
             // Send the response
             return res.status(200).json({
                 message: 'Login successful',
                 token, // Send the token (if needed for client-side use)
                 user: { username: user.staff_uname, role },
+                
             });
         });
     } catch (error) {
@@ -75,20 +66,11 @@ export const login = async (req, res) => {
 
 export const logout = (req, res) => {
     // Clear the authToken cookie
-    const username = req.body.username;
     res.clearCookie('authToken', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production', // Secure cookie for HTTPS only in production
         sameSite: 'strict',
     });
-    logAuditAction(
-        username,
-        'SELECT',
-        'staffaccount',
-        null,
-        null,
-        JSON.stringify("Logged Out ")
-    );
 
     // Send response indicating successful logout
     return res.status(200).json({ message: 'Logged out successfully' });

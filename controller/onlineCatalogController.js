@@ -139,7 +139,7 @@ export const resourcesView = (req, res) => {
                 SELECT 
                     resources.resource_title,
                     resources.resource_id, 
-                    resources.type_id,
+                    resources.type_id,i
                     CASE
                         WHEN resources.type_id = '1' THEN book.filepath
                         WHEN resources.type_id IN ('2', '3') THEN journalnewsletter.filepath

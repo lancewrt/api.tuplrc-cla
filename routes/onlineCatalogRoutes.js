@@ -10,4 +10,3 @@ router.get('/resources/view', resourcesView)
 router.get('/resources', resources)
 
 export default router
-

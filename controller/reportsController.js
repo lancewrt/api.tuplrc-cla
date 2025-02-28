@@ -104,7 +104,41 @@ const generateCirculation = async (res, kind, startDate, endDate) => {
 
             res.send(results)
         })
+    }else if(kind=='Borrowed Resources'){
+        const q = `
+        SELECT	
+            resources.resource_title as 'resource title', 
+            resourcetype.type_name as 'resource type',  
+            department.dept_name as department,
+            CASE
+                WHEN resources.type_id IN ('1', '2', '3') THEN topic.topic_name
+                ELSE 'n/a'
+            END AS topic,
+            GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author
+        FROM resources
+        JOIN checkout ON checkout.resource_id = resources.resource_id
+        JOIN resourceauthors ON resourceauthors.resource_id = resources.resource_id 
+        JOIN author ON resourceauthors.author_id = author.author_id 
+        JOIN resourcetype ON resources.type_id = resourcetype.type_id 
+        JOIN department ON department.dept_id = resources.dept_id
+        LEFT JOIN book ON resources.resource_id = book.resource_id
+        LEFT JOIN journalnewsletter ON resources.resource_id = journalnewsletter.resource_id
+        LEFT JOIN topic 
+            ON (book.topic_id = topic.topic_id OR journalnewsletter.topic_id = topic.topic_id)
+		WHERE checkout.resource_id = resources.resource_id
+        GROUP BY resources.resource_id
+        `
+        db.query(q,[startDate,endDate],(err,results)=>{
+            if (err) {
+                console.error(err);
+                return res.status(500).send({ error: 'Database query failed' });
+            }
+
+            res.send(results)
+        })
     }
+    
+    
 };
 
 const generateInventory = async(res,kind)=>{

@@ -14,7 +14,7 @@ export const checkoutSearch = async (req, res) => {
         `
         SELECT 
             b.book_isbn, 
-            b.filepath,
+            b.book_cover,
             r.resource_title AS title, 
             r.resource_quantity AS quantity, 
             r.resource_id
@@ -33,7 +33,7 @@ export const checkoutSearch = async (req, res) => {
       );
       
       const covers = results.map(book => ({
-        cover: book.filepath,
+        cover: Buffer.from(book.book_cover).toString('base64'),
         resource_id: (book.resource_id),
         resource_title: (book.title),
         resource_quantity: (book.quantity),
@@ -63,7 +63,7 @@ export const checkinSearch = async (req, res) => {
             `
             SELECT 
                 b.book_isbn, 
-                b.filepath,
+                b.book_cover,
                 r.resource_title AS title, 
                 r.resource_id
             FROM 
@@ -86,7 +86,9 @@ export const checkinSearch = async (req, res) => {
         );
 
         const covers = results.map(book => ({
-            cover: book.filepath,
+            cover: book.book_cover
+                ? Buffer.from(book.book_cover).toString('base64')
+                : null, // Handle potential null book covers
             resource_id: book.resource_id,
             resource_title: book.title,
             book_isbn: book.book_isbn,
@@ -177,7 +179,7 @@ export const checkIn = async (req, res) => {
             'checkin',
             resource_id,
             null,
-            JSON.stringify("Patron: " + patron_name + " returned a book: '" + resource_title + "'")
+            JSON.stringify({ 'book name ': resource_title, status: 'returned', patron: patron_name })
         );
 
         res.status(201).json({
@@ -261,7 +263,7 @@ export const checkOut =  async (req, res) => {
             'checkout',
             resource_id,
             null,
-            JSON.stringify("Patron: " + patron_name + " borrowed a book: '" + resource_title + "'")
+            JSON.stringify({ 'BOOK NAME': resource_title, STATUS: ' borrowed', PATRON: patron_name })
         );
 
         // Commit the transaction

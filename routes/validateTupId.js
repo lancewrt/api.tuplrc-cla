@@ -3,7 +3,7 @@ import { dbPromise } from "../config/db.js";
 
 const router = express.Router();
 
-router.post('', async (req, res) => {
+router.post('/validate-tup-id', async (req, res) => {
     console.log('Received TUP ID for validation:', req.body.tup_id);
     const { tup_id } = req.body;
 

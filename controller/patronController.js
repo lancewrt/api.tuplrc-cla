@@ -1,7 +1,7 @@
 import { db } from "../config/db.js";
 import { dbPromise } from "../config/db.js";
 
-/* export const patronSort = (req, res) => {
+export const patronSort = (req, res) => {
         const { search, startDate, endDate, limit, page } = req.query;
     
         let q = `
@@ -69,91 +69,9 @@ import { dbPromise } from "../config/db.js";
                 }
             });
         });
-}; */
-
-export const patronSort = (req, res) => {
-    const { search, startDate, endDate, limit, page, filter } = req.query;
-
-    let q = `
-        SELECT 
-            patron.patron_id, 
-            patron.tup_id, 
-            patron.patron_fname, 
-            patron.patron_lname, 
-            patron.patron_sex, 
-            patron.patron_mobile,
-            patron.patron_email, 
-            course.course_name AS course, 
-            college.college_name AS college, 
-            DATE(attendance.att_date) AS att_date, 
-            attendance.att_log_in_time 
-        FROM patron 
-        JOIN course ON patron.course_id = course.course_id 
-        JOIN college ON patron.college_id = college.college_id 
-        JOIN attendance ON patron.patron_id = attendance.patron_id 
-        WHERE 1=1
-    `;
-
-    const params = [];
-
-    // Apply search filter
-    if (search) {
-        q += ` AND (patron.tup_id LIKE ? OR patron.patron_fname LIKE ? OR patron.patron_lname LIKE ?)`;
-        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-    }
-
-    // Check if filter=today is passed
-    if (filter === "today") {
-        const today = new Date().toISOString().split('T')[0]; // Get today's date (YYYY-MM-DD)
-        q += ` AND DATE(attendance.att_date) = ?`;
-        params.push(today);
-    } else {
-        // Apply date range filters if provided
-        if (startDate) {
-            q += ` AND DATE(attendance.att_date) >= ?`;
-            params.push(startDate);
-        }
-    
-        if (endDate) {
-            q += ` AND DATE(attendance.att_date) <= ?`;
-            params.push(endDate);
-        }
-    }
-
-    // Get total count for pagination
-    const countQuery = `SELECT COUNT(*) AS total FROM (${q}) AS countQuery`;
-
-    db.query(countQuery, params, (err, countResult) => {
-        if (err) {
-            console.error(err.message);
-            res.status(500).send('Database error: ' + err.message);
-            return;
-        }
-
-        const total = countResult[0].total;
-
-        // Add pagination only if limit is not "All"
-        if (limit !== "null" && limit !== "All") {
-            const offset = (page - 1) * limit;
-            q += ` ORDER BY att_date DESC, att_log_in_time DESC LIMIT ? OFFSET ?`;
-            params.push(parseInt(limit), parseInt(offset));
-        } else {
-            q += ` ORDER BY att_date DESC, att_log_in_time DESC`; // No limit or offset
-        }
-
-        db.query(q, params, (err, results) => {
-            if (err) {
-                console.error(err.message);
-                res.status(500).send('Database error: ' + err.message);
-            } else {
-                res.json({ results, total });
-            }
-        });
-    });
 };
 
-
-/* export const borrowers = (req, res) => {
+export const borrowers = (req, res) => {
     const { page = 1, limit = 10 } = req.query  ; // default to page 1 and limit 10
     const offset = (page - 1) * limit;
 
@@ -190,85 +108,6 @@ export const patronSort = (req, res) => {
             resources r ON c.resource_id = r.resource_id
         INNER JOIN 
             course ON p.course_id = course.course_id
-        ORDER BY 
-            status_category, 
-            c.checkout_date DESC
-        LIMIT ? OFFSET ?
-    `;
-
-    db.query(countQuery, (err, countResult) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).send({ error: 'Database error', details: err.message });
-        }
-
-        const totalCount = countResult[0].totalCount;
-
-        db.query(dataQuery, [parseInt(limit), parseInt(offset)], (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).send({ error: 'Database error', details: err.message });
-            }
-
-            res.json({ data: results, totalCount });
-        });
-    });
-}; */
-
-export const borrowers = (req, res) => {
-    const { page = 1, limit = 10, query = '' } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    console.log('Query:', query);
-
-    let whereQuery = '';
-    if (query === 'returned' || query === 'borrowed' || query === 'overdue') {
-        whereQuery = `WHERE c.status = '${query}'`;
-    }
-
-    console.log('Where Clause:', whereQuery);
-
-    const countQuery = `
-        SELECT COUNT(*) AS totalCount 
-        FROM checkout c
-        INNER JOIN patron p ON p.patron_id = c.patron_id
-        INNER JOIN resources r ON c.resource_id = r.resource_id
-        INNER JOIN course ON p.course_id = course.course_id
-        LEFT JOIN checkin ci ON c.checkout_id = ci.checkout_id
-        ${whereQuery}
-    `;
-
-    const dataQuery = `
-        SELECT 
-            p.tup_id, 
-            p.patron_fname, 
-            p.patron_lname, 
-            p.patron_email, 
-            p.category, 
-            c.checkout_id,
-            c.checkout_date,
-            c.checkout_due,
-            c.status,
-            r.resource_id,
-            r.resource_title AS borrowed_book,
-            course.course_name AS course, 
-            ci.checkin_date,
-           CASE 
-                WHEN c.status = 'borrowed' THEN 'Currently Borrowed'
-                WHEN c.status = 'returned' THEN 'Returned'
-                ELSE 'Other'
-            END AS status_category
-        FROM 
-            patron p
-        INNER JOIN 
-            checkout c ON p.patron_id = c.patron_id
-        INNER JOIN 
-            resources r ON c.resource_id = r.resource_id
-        INNER JOIN 
-            course ON p.course_id = course.course_id
-        LEFT JOIN 
-            checkin ci ON c.checkout_id = ci.checkout_id
-        ${whereQuery}
         ORDER BY 
             status_category, 
             c.checkout_date DESC
