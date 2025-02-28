@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import cron from 'node-cron'
 import cookieParser from 'cookie-parser';
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 1;
 import resourceRoutes from "./routes/resourceRoutes.js";
 import dataRoutes from "./routes/dataRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -19,6 +19,8 @@ import isbnRoutes from './routes/isbnRoutes.js'
 import validateTupId from './routes/validateTupId.js'
 import onlineCatalogRoutes from './routes/onlineCatalogRoutes.js'
 import attendanceRoutes from './routes/attendanceRoutes.js'
+import { db } from './config/db.js';
+import nodemailer from 'nodemailer'; // ES Module import
 
 dotenv.config();
 
@@ -30,10 +32,10 @@ const apikey = process.env.API_KEY;
 
 app.use(express.json());
 app.use(cors({
-    origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
-}));
+    origin: ['http://localhost:3000','http://localhost:3002'],
+    methods: 'GET,POST,PUT,DELETE,OPTIONS',
+    credentials:true
+}));    
 
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
@@ -50,9 +52,13 @@ app.use('/api/isbn',isbnRoutes)
 app.use('/api/validate-tup-id', validateTupId)
 app.use('/api/online-catalog', onlineCatalogRoutes)
 app.use('/api/attendance', attendanceRoutes)
+// app.use('/server', express.static(path.join(__dirname, 'server')));
 
 /*--------------check overdue resources using cron-------- */
 const sendEmail = (email, name, tupid, borrowDate, borrowDue, resourceTitle, resourceId) => {
+
+//if di gumana to, naexpire na yata ung refresh token 
+//go to this link nalang https://www.freecodecamp.org/news/use-nodemailer-to-send-emails-from-your-node-js-server/
     
 let transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -213,7 +219,7 @@ const checkOverdue = async () => {
         FROM checkout c
         JOIN patron p ON c.patron_id = p.patron_id
         JOIN resources r ON r.resource_id = c.resource_id
-        WHERE c.status = 'borrowed' AND c.checkout_due < current_date()`;
+        WHERE (c.status = 'borrowed' OR c.status = 'overdue') AND c.checkout_due < current_date()`;
 
     db.query(q, (err, result) => {
         if (err) {
@@ -224,50 +230,61 @@ const checkOverdue = async () => {
             result.forEach(item => {
                 console.log('Processing checkout_id:', item.checkout_id);
 
-                // Check if the checkout_id already exists in the overdue table
-                const checkOverdueQuery = `
-                SELECT * FROM overdue WHERE checkout_id = ?`;
-
-                db.query(checkOverdueQuery, [item.checkout_id], (err, overdueResult) => {
+                const updateStatus = `
+                    UPDATE checkout 
+                    SET status = 'overdue'
+                    WHERE checkout_id = ?`
+                
+                db.query(updateStatus, [item.checkout_id], (err, updateResult)=>{
                     if (err) {
-                        return console.error('Error checking overdue table:', err);
+                        return console.error('Error updating status:', err);
                     }
 
-                    if (overdueResult.length > 0) {
-                        // If the checkout_id exists, increment the overdue_days by 1
-                        const updateOverdueQuery = `
-                        UPDATE overdue
-                        SET overdue_days = overdue_days + 1
-                        WHERE checkout_id = ?`;
+                    // Check if the checkout_id already exists in the overdue table
+                    const checkOverdueQuery = `
+                    SELECT * FROM overdue WHERE checkout_id = ?`;
 
-                        db.query(updateOverdueQuery, [item.checkout_id], (err, updateResult) => {
-                            if (err) {
-                                return console.error('Error updating overdue table:', err);
-                            }
+                    db.query(checkOverdueQuery, [item.checkout_id], (err, overdueResult) => {
+                        if (err) {
+                            return console.error('Error checking overdue table:', err);
+                        }
 
-                            console.log('Overdue days incremented for checkout_id:', item.checkout_id);
-                            // Send email to patron
-                            sendEmail(item.patron_email,`${item.patron_fname} ${item.patron_lname}`, item.tup_id, item.checkout_date, item.checkout_due,item.resource_title, item.resource_id);
-                        });
-                    } else {
-                        // If checkout_id doesn't exist in the overdue table, insert it
-                        const insertOverdueQuery = `
-                        INSERT INTO overdue (overdue_days, overdue_fine, checkout_id)
-                        VALUES (?, ?, ?)`;
+                        if (overdueResult.length > 0) {
+                            // If the checkout_id exists, increment the overdue_days by 1
+                            const updateOverdueQuery = `
+                            UPDATE overdue
+                            SET overdue_days = overdue_days + 1
+                            WHERE checkout_id = ?`;
 
-                        const values = [1, 0, item.checkout_id];
+                            db.query(updateOverdueQuery, [item.checkout_id], (err, updateResult) => {
+                                if (err) {
+                                    return console.error('Error updating overdue table:', err);
+                                }
 
-                        db.query(insertOverdueQuery, values, (err, insertResult) => {
-                            if (err) {
-                                return console.error('Error inserting into overdue table:', err);
-                            }
+                                console.log('Overdue days incremented for checkout_id:', item.checkout_id);
+                                // Send email to patron
+                                sendEmail(item.patron_email,`${item.patron_fname} ${item.patron_lname}`, item.tup_id, item.checkout_date, item.checkout_due,item.resource_title, item.resource_id);
+                            });
+                        } else {
+                            // If checkout_id doesn't exist in the overdue table, insert it
+                            const insertOverdueQuery = `
+                            INSERT INTO overdue (overdue_days, overdue_fine, checkout_id)
+                            VALUES (?, ?, ?)`;
 
-                            console.log('New overdue entry created for checkout_id:', item.checkout_id);
-                            // Send email to patron
-                            sendEmail(item.patron_email,`${item.patron_fname} ${item.patron_lname}`, item.tup_id, item.checkout_date, item.checkout_due,item.resource_title, item.resource_id);
-                        });
-                    }
-                });
+                            const values = [1, 0, item.checkout_id];
+
+                            db.query(insertOverdueQuery, values, (err, insertResult) => {
+                                if (err) {
+                                    return console.error('Error inserting into overdue table:', err);
+                                }
+
+                                console.log('New overdue entry created for checkout_id:', item.checkout_id);
+                                // Send email to patron
+                                sendEmail(item.patron_email,`${item.patron_fname} ${item.patron_lname}`, item.tup_id, item.checkout_date, item.checkout_due,item.resource_title, item.resource_id);
+                            });
+                        }
+                    });
+                })
             });
         } else {
             console.log('No overdue checkouts found.');
