@@ -1,8 +1,8 @@
 import express from 'express';
 import multer from 'multer';
-import fs, { stat } from 'fs';
-import { adviser, book, journalNewsletter, publisher, resources } from '../controller/syncController.js';
-import { authors } from '../controller/dataController.js';
+import fs from 'fs';
+import { adviser, book, journalNewsletter, publisher, resources, authors } from '../controller/syncController.js';
+
 
 const router = express.Router();
 
@@ -11,7 +11,7 @@ const storage = multer.diskStorage({
         return cb(null,"./public/images")
     },
     filename:function(req,file,cb){
-        return cb(null,`${Date.now()}_${file.originalname}`)
+        return cb(null,file.originalname)
     }
 })
 

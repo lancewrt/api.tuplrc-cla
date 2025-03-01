@@ -1,4 +1,5 @@
 import { db } from "../config/db.js";
+import fs, { stat } from 'fs';
 
 export const resources = async (req, res) => {
     const resource = req.body;
@@ -18,7 +19,7 @@ export const resources = async (req, res) => {
 
     const values = [
         resource.resource_title,
-        resource.resource_description,
+        resource.resource_description || '',
         resource.resource_published_date,
         resource.resource_quantity,
         resource.resource_is_circulation,
@@ -54,6 +55,7 @@ export const adviser = async (req,res)=>{
 
 export const authors = (req, res) => {
     const { author, resourceId } = req.body;
+    console.log('sync author',author)
 
     // Step 1: Check if the author already exists
     const checkAuthorQuery = `
@@ -192,11 +194,11 @@ export const book = async (req, res) => {
     console.log(req.body)
 
     const { resourceId, pubId, book_isbn, topic_id } = req.body;
-    const file = req.file ? fs.readFileSync(req.file.path) : null;
+    const file = req.file.path.replace(/\\/g, "/").toString();
 
     const q = `
       INSERT INTO 
-          book (book_cover, book_isbn, resource_id, pub_id, topic_id) 
+          book (filepath, book_isbn, resource_id, pub_id, topic_id) 
       VALUES (?, ?, ?, ?, ?)`;
 
     const values = [
@@ -229,11 +231,11 @@ export const journalNewsletter = async (req, res) => {
         console.log("Received file:", req.file);
     
         const { resourceId, jn_volume, jn_issue, topic_id } = req.body;
-        const file = req.file ? fs.readFileSync(req.file.path) : null;
+        const file = req.file.path.replace(/\\/g, "/").toString();
     
         const q = `
           INSERT INTO 
-              journalnewsletter (jn_volume, jn_issue, jn_cover, resource_id, topic_id) 
+              journalnewsletter (jn_volume, jn_issue, filepath, resource_id, topic_id) 
           VALUES (?, ?, ?, ?, ?)`;
     
         const values = [
@@ -275,3 +277,64 @@ const syncThesisOnline = async(adviserId,resourceId,res)=>{
         }
     });
 }
+
+//check resource if exist
+const checkResourceIfExist = (title) => {
+  return new Promise((resolve, reject) => {
+      const query = `SELECT * FROM resources WHERE resource_title = ?`;
+
+      db.query(query, [title], (err, results) => {
+          if (err) {
+              return reject(err); // Reject with error
+          }
+
+          if (results.length > 0) {
+              // Resolve with `true` if resource exists
+              resolve(true);
+          } else {
+              // Resolve with `false` if resource does not exist
+              resolve(false);
+          }
+      });
+  });
+};
+
+//check if adviser exist
+const checkAdviserIfExist = async (adviser) => {
+    const q = "SELECT * FROM adviser WHERE adviser_fname = ? AND adviser_lname = ?";
+
+    return new Promise((resolve, reject) => {
+        db.query(q, adviser, async (err, results) => {
+            if (err) {
+                return reject(err); // Reject the promise on error
+            }
+
+            if (results.length > 0) {
+                resolve(results[0].adviser_id); // Resolve with existing adviser ID
+            } else {
+                try {
+                    const adviserId = await insertAdviser(adviser); // Call insertAdviser for new adviser
+                    resolve(adviserId); // Resolve with new adviser ID
+                } catch (insertError) {
+                    reject(insertError); // Reject if insertAdviser fails
+                }
+            }
+        });
+    });
+};
+
+//insert adviser
+const insertAdviser = async (adviser) => {
+  const q = `INSERT INTO adviser (adviser_fname, adviser_lname) VALUES (?, ?)`;
+
+  return new Promise((resolve, reject) => {
+      db.query(q, adviser, (err, results) => {
+          if (err) {
+              return reject(err); // Reject the promise on error
+          }
+
+          resolve(results.insertId); // Resolve with the new adviser ID
+      });
+  });
+};
+
