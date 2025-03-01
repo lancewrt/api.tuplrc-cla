@@ -16,8 +16,8 @@ import cron from 'node-cron'
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import validateTupIdRouter from './routes/validateTupId.js'; // Adjust the path if neededimport cron from 'node-cron'
 
-
 dotenv.config();
+
 
 const dbPromise = mysqlPromise.createPool({ host: process.env.DB_HOST_LOCAL,
     user: process.env.DB_USER_LOCAL,
@@ -28,7 +28,7 @@ const app = express()
 app.use(cookieParser());
 app.use(express.json())
 app.use(cors({
-    origin: ['http://localhost:3000','http://localhost:3002'],
+    origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com'],
     methods: 'GET,POST,PUT,DELETE',
     credentials:true
 }));
@@ -43,6 +43,7 @@ const apikey = process.env.API_KEY;
     password: process.env.DB_PASSWORD_LOCAL,
     database: process.env.DB_DATABASE_LOCAL,
 }); 
+
 
 db.connect((err) => {
     if (err) {
@@ -60,7 +61,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         // URL for frontend
-        origin: ['http://localhost:3000','http://localhost:3002'],
+        origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com'],
         
     }
 });

@@ -83,26 +83,30 @@ export const overdueBooks = (req, res) => {
 export const bookStatistics = (req,res)=>{
     const q = `
     WITH week_days AS (
-        SELECT 2 AS day_num, 'Monday' AS day_name
-        UNION ALL SELECT 3, 'Tuesday'
-        UNION ALL SELECT 4, 'Wednesday'
-        UNION ALL SELECT 5, 'Thursday'
-        UNION ALL SELECT 6, 'Friday'
-        UNION ALL SELECT 7, 'Saturday'
-    )
-    SELECT 
-        wd.day_name AS day_of_week,
-        COALESCE(COUNT(c.resource_id), 0) AS total_books_borrowed
-    FROM 
-        week_days wd
-    LEFT JOIN 
-        checkout c ON DAYOFWEEK(c.checkout_date) = wd.day_num
-        AND c.checkout_date >= DATE_ADD(CURDATE(), INTERVAL - WEEKDAY(CURDATE()) DAY)
-        AND c.checkout_date < DATE_ADD(CURDATE(), INTERVAL - WEEKDAY(CURDATE()) + 6 DAY)
-    GROUP BY 
-        wd.day_num, wd.day_name
-    ORDER BY 
-        wd.day_num;`
+    SELECT 2 AS day_num, 'Monday' AS day_name
+    UNION ALL SELECT 3, 'Tuesday'
+    UNION ALL SELECT 4, 'Wednesday'
+    UNION ALL SELECT 5, 'Thursday'
+    UNION ALL SELECT 6, 'Friday'
+    UNION ALL SELECT 7, 'Saturday'
+    UNION ALL SELECT 1, 'Sunday'  -- Added Sunday for completeness
+)
+SELECT 
+    wd.day_name AS day_of_week,
+    COALESCE(COUNT(c.resource_id), 0) AS total_books_borrowed
+FROM 
+    week_days wd
+LEFT JOIN 
+    checkout c 
+    ON DAYOFWEEK(c.checkout_date) = wd.day_num
+    AND c.status = 'Borrowed'  -- ✅ Filter only "Borrowed" records
+    AND c.checkout_date >= DATE_ADD(CURDATE(), INTERVAL - WEEKDAY(CURDATE()) DAY)
+    AND c.checkout_date < DATE_ADD(CURDATE(), INTERVAL - WEEKDAY(CURDATE()) + 6 DAY)
+GROUP BY 
+    wd.day_num, wd.day_name
+ORDER BY 
+    wd.day_num;
+`
 
     db.query(q, (err,result)=>{
         if (err) return res.status(500).send({ error: 'Database query failed' });
@@ -213,7 +217,7 @@ export const popularChoices = (req, res) => {
         JOIN book b ON b.resource_id = r.resource_id
         JOIN checkout cout ON cout.resource_id = r.resource_id
         WHERE r.resource_id = cout.resource_id
-        GROUP BY r.resource_title, r.resource_published_date, b.book_cover, r.resource_id
+        GROUP BY r.resource_title, r.resource_published_date, b.filepath, r.resource_id
         ORDER BY borrowed_times DESC
         LIMIT 5;`;
     
