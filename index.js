@@ -37,6 +37,9 @@ app.use(cors({
     methods: ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
 }));
 
+app.options("*", (req, res) => {
+    res.sendStatus(204);  // No content response
+});
 
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
