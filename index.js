@@ -32,15 +32,10 @@ const apikey = process.env.API_KEY;
 
 app.use(express.json());
 app.use(cors({
-    origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com', 'http://localhost:3002', 'http://localhost:3000'],
+    origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com','http://localhost:3002','http://localhost:3000'],
     credentials: true,
     methods: ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
 }));
-
-app.options("*", (req, res) => {
-    res.sendStatus(204);  // No content response
-});
 
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
