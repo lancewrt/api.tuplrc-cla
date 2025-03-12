@@ -32,7 +32,7 @@ const apikey = process.env.API_KEY;
 
 app.use(express.json());
 app.use(cors({
-    origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com',],
+    origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com'],
     credentials: true,
     methods: ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
 }));
