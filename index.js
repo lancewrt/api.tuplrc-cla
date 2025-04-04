@@ -40,7 +40,8 @@ const io = new Server(httpServer, {
     origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
-  }
+  },
+  transports: ['websocket'],
 });
 
 // Make io available to all routes
