@@ -91,7 +91,7 @@ app.use('/api/advanced-search', advancedSearchRoutes);
 //4. select ung https://mail.google.com/ and click authorize api
 //5. click exchange authorization code for tokens
 //6. copy and paste new refresh token sa .env
-cron.schedule('* * * * *', () => {
+cron.schedule('0 0 * * *', () => {
   console.log('Cron running to check overdue resources')
   checkOverdue();
 });
