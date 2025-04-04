@@ -97,7 +97,7 @@ cron.schedule('0 0 * * *', () => {
 });
 
 /*--------------send email if overdue is approaching-------- */
-cron.schedule('* * * * *', () => {
+cron.schedule('0 0 * * *', () => {
   console.log('Cron running to check approaching overdue')
   approachingOverdue();
 });
