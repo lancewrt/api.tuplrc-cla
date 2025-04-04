@@ -43,5 +43,7 @@ router.post('/resources', resources);
 router.post('/adviser', adviser);
 router.post('/authors', authors);
 router.post('/publisher', publisher);
-router.post('/resources',upload.single('file'), book);
+router.post('/book',upload.single('file'), book);
+router.post('/journalnewsletter',upload.single('file'), journalNewsletter);
+
 export default router;

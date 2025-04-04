@@ -1,6 +1,8 @@
 import { dbPromise } from "../config/db.js";
 import { db } from "../config/db.js";
 import { logAuditAction } from "./auditController.js";
+import { bookList } from "./dashboardController.js";
+import { authors } from "./dataController.js";
 
 /*----------SEARCH BOOK FROM CIRCULATION SELECT ITEM--------- */
 export const checkoutSearch = async (req, res) => {
@@ -17,17 +19,28 @@ export const checkoutSearch = async (req, res) => {
             b.filepath,
             r.resource_title AS title, 
             r.resource_quantity AS quantity, 
-            r.resource_id
+            r.resource_id,
+            pub.pub_name,
+            r.resource_is_archived,
+            GROUP_CONCAT(DISTINCT CONCAT(a.author_fname, ' ', a.author_lname) ORDER BY a.author_lname SEPARATOR ', ') AS authors
         FROM 
             book b
         INNER JOIN 
-            resources r 
-        ON 
-            b.resource_id = r.resource_id
+            resources r ON b.resource_id = r.resource_id
+        INNER JOIN 
+            resourceauthors ra ON ra.resource_id = r.resource_id
+        INNER JOIN
+            publisher pub ON pub.pub_id = b.pub_id
+        INNER JOIN 
+            author a ON a.author_id = ra.author_id
         WHERE 
-            (b.book_isbn LIKE ? OR r.resource_title LIKE ?)
+            (b.book_isbn LIKE ? OR r.resource_title LIKE ?  )
             AND r.resource_quantity > 0
+            AND r.resource_is_archived = 0
+        GROUP BY 
+            b.book_isbn, b.filepath, r.resource_id
         LIMIT 10;
+
         `,
         [`%${query}%`, `%${query}%`]
       );
@@ -37,8 +50,9 @@ export const checkoutSearch = async (req, res) => {
         resource_id: (book.resource_id),
         resource_title: (book.title),
         resource_quantity: (book.quantity),
-        book_isbn: (book.book_isbn)
-
+        book_isbn: (book.book_isbn),
+        authors: book.authors,
+        publisher: (book.pub_name),
     }));
 
       res.json(covers);
@@ -64,22 +78,27 @@ export const checkinSearch = async (req, res) => {
             SELECT 
                 b.book_isbn, 
                 b.filepath,
+                pub.pub_name,
                 r.resource_title AS title, 
-                r.resource_id
+                r.resource_id,
+                GROUP_CONCAT(DISTINCT CONCAT(a.author_fname, ' ', a.author_lname) ORDER BY a.author_lname SEPARATOR ', ') AS authors
             FROM 
                 book b
             INNER JOIN 
-                resources r 
-            ON 
-                b.resource_id = r.resource_id
+                resources r ON b.resource_id = r.resource_id
             INNER JOIN 
-                checkout c 
-            ON 
-                r.resource_id = c.resource_id
+                resourceauthors ra ON ra.resource_id = r.resource_id
+            INNER JOIN 
+                author a ON a.author_id = ra.author_id
+            INNER JOIN
+                publisher pub ON pub.pub_id = b.pub_id
+            INNER JOIN 
+                checkout c ON r.resource_id = c.resource_id
             WHERE 
                 (b.book_isbn LIKE ? OR r.resource_title LIKE ?)
-                AND c.patron_id = ? AND c.status = "borrowed"
-
+                AND c.patron_id = ? AND (c.status = "borrowed" OR c.status = "overdue")
+            GROUP BY 
+                b.book_isbn, b.filepath, r.resource_id
             LIMIT 10;
             `,
             [`%${query}%`, `%${query}%`, patron_id]
@@ -90,6 +109,8 @@ export const checkinSearch = async (req, res) => {
             resource_id: book.resource_id,
             resource_title: book.title,
             book_isbn: book.book_isbn,
+            authors: book.authors,  
+            publisher: book.pub_name,
         }));
 
         res.json(covers);
@@ -101,13 +122,13 @@ export const checkinSearch = async (req, res) => {
 
 export const checkoutRecord = (req, res) => {
     const { resource_id, patron_id } = req.query;
-    const query = 'SELECT checkout_id FROM checkout WHERE resource_id = ? AND patron_id = ? AND status = "borrowed"';
+    const query = 'SELECT checkout_id FROM checkout WHERE resource_id = ? AND patron_id = ? AND (status = "borrowed" OR status= "overdue") ';
 
     db.query(query, [resource_id, patron_id], (err, results) => {
         if (err) {
         return res.status(500).json({ error: err.message });
         }
-        if (results.lesngth === 0) {
+        if (results.length === 0) {
         return res.status(404).json({ message: 'Checkout record not found.' });
         }
         res.json(results[0]);
@@ -179,6 +200,9 @@ export const checkIn = async (req, res) => {
             null,
             JSON.stringify("Patron: " + patron_name + " returned a book: '" + resource_title + "'")
         );
+
+        // Use the io instance from the request object
+        req.io.emit('checkinUpdated');
 
         res.status(201).json({
             message: 'Item successfully checked in and removed from checkout.',
@@ -266,6 +290,9 @@ export const checkOut =  async (req, res) => {
 
         // Commit the transaction
         await db.query('COMMIT');
+
+        // Use the io instance from the request object
+        req.io.emit('checkoutUpdated');
 
         res.status(200).json({
             message: 'Checkout successful!',

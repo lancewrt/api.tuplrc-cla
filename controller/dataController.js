@@ -1,7 +1,7 @@
 import { db } from "../config/db.js";
 
 export const college = (req,res)=>{
-    const q = 'SELECT * FROM college'
+    const q = 'SELECT * FROM college ORDER BY college_name ASC'
 
     db.query(q,(err,results)=>{
         if(err) return res.send(err)
@@ -10,7 +10,7 @@ export const college = (req,res)=>{
 };
 
 export const course = (req,res)=>{
-    const q = 'SELECT * FROM course'
+    const q = 'SELECT * FROM course ORDER BY course_name ASC'
 
     db.query(q,(err,results)=>{
         if(err) return res.send(err)
@@ -19,7 +19,7 @@ export const course = (req,res)=>{
 };
 
 export const departments = (req,res)=>{
-    const q = 'SELECT * FROM department'
+    const q = 'SELECT * FROM department ORDER BY dept_name ASC'
 
     db.query(q,(err,results)=>{
         if(err) return res.send(err)
@@ -28,7 +28,7 @@ export const departments = (req,res)=>{
 };
 
 export const topic = (req,res)=>{
-    const q = 'SELECT * FROM topic'
+    const q = 'SELECT * FROM topic ORDER BY topic_name ASC'
 
     db.query(q,(err,results)=>{
         if(err) return res.send(err)
@@ -37,7 +37,7 @@ export const topic = (req,res)=>{
 };
 
 export const publishers = (req,res)=>{
-    const q = 'SELECT * FROM publisher'
+    const q = 'SELECT * FROM publisher ORDER BY pub_name ASC'
 
     db.query(q,(err,results)=>{
         if(err) return res.send(err)
@@ -46,7 +46,7 @@ export const publishers = (req,res)=>{
 };
 
 export const authors = (req,res)=>{
-    const q = 'SELECT * FROM author'
+    const q = 'SELECT * FROM author ORDER BY author_fname ASC'
 
     db.query(q,(err,results)=>{
         if(err) return res.send(err)
@@ -55,7 +55,7 @@ export const authors = (req,res)=>{
 };
 
 export const advisers = (req,res)=>{
-    const q = 'SELECT * FROM adviser'
+    const q = 'SELECT * FROM adviser ORDER BY adviser_fname ASC'
 
     db.query(q,(err,results)=>{
         if(err) return res.send(err)
@@ -100,8 +100,6 @@ export const getTopicsByDepartment = (req,res)=>{
             return res.json(results)
     })
 };
-
-
 
 export const addDept = (req, res) => {
     const { dept_id, dept_name, dept_shelf_no } = req.body;

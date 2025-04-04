@@ -14,7 +14,7 @@ export const login = async (req, res) => {
     }
     
     const query = `
-        SELECT staff_uname, staff_password, role_name
+        SELECT staff_id, staff_uname, staff_password, role_name
         FROM staffaccount
         JOIN roles ON staffaccount.role_id = roles.role_id
         WHERE staff_uname = ? AND staff_status = 'active'`;
@@ -40,7 +40,7 @@ export const login = async (req, res) => {
             }
 
             // Generate a JWT for the user
-            const payload = { username: user.staff_uname, role };
+            const payload = { id: user.staff_id, username: user.staff_uname, role };
             const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
 
             // Optionally store the token as a secure cookie
@@ -64,7 +64,7 @@ export const login = async (req, res) => {
             return res.status(200).json({
                 message: 'Login successful',
                 token, // Send the token (if needed for client-side use)
-                user: { username: user.staff_uname, role },
+                user: { id: user.staff_id, username: user.staff_uname, role },
             });
         });
     } catch (error) {
@@ -113,6 +113,6 @@ export const checkSession = (req, res) => {
             return res.status(401).json({ loggedIn: false });
         }
 
-        return res.status(200).json({ loggedIn: true, userRole: decoded.role, username: decoded.username });
+        return res.status(200).json({ loggedIn: true, userID:decoded.id, userRole: decoded.role, username: decoded.username });
     });
 };

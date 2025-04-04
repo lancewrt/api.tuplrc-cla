@@ -925,67 +925,24 @@ export const importCatalog = async (req, res) => {
 
         // 1. Iterate through each element
         for (const data of importData) {
-            const quantity = data['quantity'];
-            const title = data['title'];
-            const author = data['authors'];
-            const date = data['published date'];
-            const dept = data['department'];
-            const adviser = data['adviser']; //thesis only 
-            const topic = data['topic']; //except thesis
+            const fieldsRequired = ['quantity', 'title', 'authors', 'published date', 'department'];
+            if (selectedType == 4) fieldsRequired.push('adviser');
+            if (selectedType != 4) fieldsRequired.push('topic');
 
-            // Validation checks
-            let isValid = true;
-            let validationErrors = [];
+            // **Check for missing fields**
+            const missingFields = fieldsRequired.filter(field => 
+                !data[field] || data[field] === undefined || data[field] === null
+            );
 
-            if(quantity<=0){
-                isValid=false;
-                validationErrors.push("Invalid quantity")
-            }
-
-            if(!title){
-                isValid=false;
-                validationErrors.push("Missing title")
-            }
-
-            if(!author||author.length<=0){
-                isValid=false;
-                validationErrors.push("Missing authors")
-            }
-
-            // validate year
-            const yearRegex = /^\d{4}$/;
-            if(!yearRegex.test(date)){
-                isValid=false;
-                validationErrors.push("Published date must be in year")
-            }
-
-            if(!dept){
-                isValid=false;
-                validationErrors.push("Missing department")
-            }
-
-            if(selectedType!=4){
-                if(!topic){
-                    isValid=false;
-                    validationErrors.push("Missing topic")
-                }
-            }
-
-            if(selectedType==4){
-                if(!adviser){
-                    isValid=false;
-                    validationErrors.push("Missing adviser")
-                }
-            }
-
-            // If validation failed, add to invalid list and skip
-            if (!isValid) {
-                invalidResources.push({ 
-                    title: title, 
-                    reason: validationErrors.join(', ') 
+            if (missingFields.length > 0) {
+                invalidResources.push({
+                    title: data['title'] || "Unknown Title",
+                    reason: "Missing/empty required fields",
+                    missingFields
                 });
                 continue;
             }
+
 
             // 2. Get department ID
             const deptQ = 'SELECT dept_id FROM department WHERE dept_name = ?';

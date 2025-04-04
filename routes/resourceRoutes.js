@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import fs, { stat } from 'fs';
-import {saveResource, updateResource, viewResource } from '../controller/resourceController.js';
+import {importCatalog, saveResource, updateResource, viewResource } from '../controller/resourceController.js';
 
 const router = express.Router();
 
@@ -59,6 +59,7 @@ router.put('/file', upload.single('file'), (req, res) => {
 });
 
 router.post('/',upload.single('file'),saveResource)
+router.post('/import', importCatalog)
 router.put('/:id',upload.single('file'),updateResource)
 router.get('/:id', viewResource)
 

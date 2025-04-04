@@ -39,12 +39,9 @@ export const saveResource = async (req, res) => {
         }else if(mediaType==='4'){
             // split string
             //if req.body.adviser is 'name lastname'. pag ginamitan ng split(' ') it will be ['name','lastname']
-            // const adviser = req.body.adviser.split(' ')
-            // adviserFname = adviser[0];
-            // adviserLname = adviser[1];
-            const nameParts = req.body.adviser.trim().split(' ');
-            adviserFname = nameParts.slice(0, -1).join(" "); // "John Michael"
-            adviserLname = nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''; // "Doe"
+            const adviser = req.body.adviser.split(' ')
+            adviserFname = adviser[0];
+            adviserLname = adviser[1];
         }
         
         //authors is in string
@@ -259,38 +256,11 @@ export const insertBook = async(isbn, resourceId, pubId, topic, res, imageFile)=
 }
 
 //check resource if exist
-export const checkResourceIfExist = (title,authors) => {
-    console.log(authors);
-
-    let authorParams = [];
-    let authorPlaceholder = [];
-    const authorsArr = Array.isArray(authors) ? authors : authors.split(',');
-
-    authorsArr.forEach(element => {          
-        const nameParts = element.trim().split(' '); 
-        const fname = nameParts.slice(0, -1).join(" "); // "John Michael"
-        const lname = nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''; // "Doe"
-
-        authorParams.push(fname);
-        authorParams.push(lname);
-        authorPlaceholder.push('(?,?)');
-    });
-    
+export const checkResourceIfExist = (title) => {
     return new Promise((resolve, reject) => {
-        const query = `
-            SELECT r.resource_id, r.resource_title
-            FROM resources r
-            JOIN resourceauthors ra ON r.resource_id = ra.resource_id
-            JOIN author a ON ra.author_id = a.author_id
-            WHERE r.resource_title = ?
-            AND (a.author_fname, a.author_lname) IN (${authorPlaceholder.join(', ')}) 
-            GROUP BY r.resource_id, r.resource_title
-            HAVING COUNT(DISTINCT a.author_id) = ?;
-        `;
-        console.log(query)
-        console.log(authorParams)
+        const query = `SELECT * FROM resources WHERE resource_title = ?`;
 
-        db.query(query, [title, ...authorParams, authorsArr.length], (err, results) => {
+        db.query(query, [title], (err, results) => {
             if (err) {
                 return reject(err); // Reject with error
             }
@@ -310,7 +280,7 @@ export const insertResources = async (res, req, authors, username) => {
     return new Promise(async (resolve, reject) => {
         try {
             // Check if the resource exists
-            const resourceExists = await checkResourceIfExist(req.body.title, req.body.authors);
+            const resourceExists = await checkResourceIfExist(req.body.title);
 
             if (resourceExists) {
                 console.log('Resource already exists.');
@@ -456,12 +426,9 @@ export const updateResource = async (req, res) => {
          }else if(mediaType==='4'){
              // split string
              //if req.body.adviser is 'name lastname'. pag ginamitan ng split(' ') it will be ['name','lastname']
-            //  const adviser = req.body.adviser.split(' ')
-            //  adviserFname = adviser[0];
-            //  adviserLname = adviser[1];
-            const nameParts = req.body.adviser.trim().split(' ');
-            adviserFname = nameParts.slice(0, -1).join(" "); // "John Michael"
-            adviserLname = nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''; // "Doe"
+             const adviser = req.body.adviser.split(' ')
+             adviserFname = adviser[0];
+             adviserLname = adviser[1];
          }
          
          const authors = req.body.authors.split(',')
@@ -829,7 +796,6 @@ const getBookResource = (id,res)=>{
         resources.resource_published_date,
         book.pub_id, 
         resources.resource_quantity, 
-        resources.original_resource_quantity, 
         resources.resource_title, 
         publisher.pub_name,
         book.filepath,
@@ -855,7 +821,6 @@ const getNewsletterJournalResource = (id,res)=>{
         resources.resource_id,
         resources.type_id,
         resources.resource_quantity,
-        resources.original_resource_quantity, 
         resources.avail_id,
         resources.resource_title,
         resources.resource_published_date,
@@ -891,7 +856,6 @@ const getThesisResource = (id,res)=>{
         resources.resource_is_circulation,
         resources.resource_published_date,
         resources.resource_quantity,
-        resources.original_resource_quantity, 
         resources.avail_id,
         resources.resource_title,
         GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_names,
@@ -921,118 +885,37 @@ export const importCatalog = async (req, res) => {
         console.log(selectedType);
 
         let insertedResources = []; // Array to store successfully inserted resources
-        let invalidResources = []
 
         // 1. Iterate through each element
         for (const data of importData) {
-            const quantity = data['quantity'];
-            const title = data['title'];
-            const author = data['authors'];
-            const date = data['published date'];
-            const dept = data['department'];
-            const adviser = data['adviser']; //thesis only 
-            const topic = data['topic']; //except thesis
-
-            // Validation checks
-            let isValid = true;
-            let validationErrors = [];
-
-            if(quantity<=0){
-                isValid=false;
-                validationErrors.push("Invalid quantity")
-            }
-
-            if(!title){
-                isValid=false;
-                validationErrors.push("Missing title")
-            }
-
-            if(!author||author.length<=0){
-                isValid=false;
-                validationErrors.push("Missing authors")
-            }
-
-            // validate year
-            const yearRegex = /^\d{4}$/;
-            if(!yearRegex.test(date)){
-                isValid=false;
-                validationErrors.push("Published date must be in year")
-            }
-
-            if(!dept){
-                isValid=false;
-                validationErrors.push("Missing department")
-            }
-
-            if(selectedType!=4){
-                if(!topic){
-                    isValid=false;
-                    validationErrors.push("Missing topic")
-                }
-            }
-
-            if(selectedType==4){
-                if(!adviser){
-                    isValid=false;
-                    validationErrors.push("Missing adviser")
-                }
-            }
-
-            // If validation failed, add to invalid list and skip
-            if (!isValid) {
-                invalidResources.push({ 
-                    title: title, 
-                    reason: validationErrors.join(', ') 
-                });
-                continue;
-            }
-
             // 2. Get department ID
             const deptQ = 'SELECT dept_id FROM department WHERE dept_name = ?';
             const deptId = await new Promise((resolve, reject) => {
-                db.query(deptQ, [data['department'].toLowerCase().trim()], (err, result) => {
+                db.query(deptQ, [data['Department'].toLowerCase()], (err, result) => {
                     if (err) reject(err);
                     else resolve(result.length ? result[0].dept_id : null);
                 });
             });
 
-            // **Skip resource if department ID is not found**
-            if (!deptId) {
-                console.log(`Skipping resource: ${data['title']} (Department not found: ${data['department']})`);
-                invalidResources.push({
-                    title: data['title'],
-                    reason: `Department not found in database: ${data['department']}`
-                });
-                continue;
-            }
-
+            // 3. Get topic ID if selected type is book/journal/newsletter
             let topicId = null;
-            if (selectedType != 4) {
+            if (selectedType !== 4) {
                 const topicQ = 'SELECT topic_id FROM topic WHERE topic_name = ?';
                 topicId = await new Promise((resolve, reject) => {
-                    db.query(topicQ, [data['topic'].toLowerCase().trim()], (err, result) => {
+                    db.query(topicQ, [data['Topic'].toLowerCase()], (err, result) => {
                         if (err) reject(err);
                         else resolve(result.length ? result[0].topic_id : null);
                     });
                 });
-
-                // **Skip the resource if topic is not found**
-                if (!topicId) {
-                    console.log(`Skipping resource: Topic not found for ${data['topic']}`);
-                    invalidResources.push({ 
-                        title: data['title'], 
-                        reason: `Topic not found in database: ${data['topic']}`
-                    });
-                    continue; // Skip the rest of the logic and continue with the next item in the loop
-                }
             }
 
-
-            // 4. Organize authors (Trim Spaces)
-            const authors = data['authors']
-                ? data['authors'].split(',').map(author => author.trim())
+            // 4. Organize authors
+            const authors = data['Authors']
+                ? data['Authors'].includes(',')
+                    ? data['Authors'].split(',')
+                    : [data['Authors']]
                 : [];
-            console.log('authors:', authors);
+            console.log(authors);
 
             // 5. Organize advisers and publishers
             let pub;
@@ -1040,62 +923,41 @@ export const importCatalog = async (req, res) => {
             if (selectedType == 1) {
                 pub = {
                     pub_id: 0,
-                    pub_name: data['publisher name'] || '',
-                    pub_add: data['publisher address'] || '',
-                    pub_email: data['publisher email'] || '',
-                    pub_phone: data['publisher number'] || '',
-                    pub_web: data['publisher website'] || ''
+                    pub_name: data['Publisher Name'],
+                    pub_add: data['Publisher Address'],
+                    pub_email: data['Publisher Email'],
+                    pub_phone: data['Publisher Number'],
+                    pub_web: data['Publisher Website']
                 };
-            } else if (selectedType == 4 && data['adviser']) {
-                const nameParts = data['adviser'].trim().split(' ');
-                adviserFname = nameParts.slice(0, -1).join(" "); // "John Michael"
-                adviserLname = nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''; // "Doe"
+            } else if (selectedType == 4) {
+                const adviser = req.body.adviser.split(' ');
+                adviserFname = adviser[0];
+                adviserLname = adviser[1];
             }
 
             // 6. Insert Resources
             const resourceId = await importResources(res, deptId, data, authors, username, selectedType);
             if (!resourceId) {
-                console.log(`Skipping resource: ${data['title']} (Insert Failed)`);
-                invalidResources.push({
-                    title: data['title'],
-                    reason: "Resource already exist"
-                });
+                console.log(`Skipping resource: ${data['Title']}`);
                 continue;
             }
 
-            insertedResources.push({ title: data['title'], id: resourceId });
+            insertedResources.push({ title: data['Title'], id: resourceId });
 
             // 7. Insert Books if selected type is 1 (Book)
             if (selectedType == '1') {
                 const pubId = await checkIfPubExist(pub);
                 console.log('Publisher ID:', pubId);
-                await importBook(data['isbn'], resourceId, pubId, topicId, imageFile);
-            } else if (['2', '3'].includes(selectedType)) {
-                const jn = [
-                    data['volume'] || '',
-                    data['issue'] || '',
-                    imageFile, 
-                    resourceId,
-                    topicId
-                ];
-                await importJournalNewsletter(jn, res);
-            } else {
-                const adviser = [adviserFname, adviserLname];
-                
-                // Get adviserId
-                const adviserID = await checkAdviserIfExist(adviser);
-                console.log('Adviser ID:', adviserID);
-                
-                // Insert into thesis table
-                await importThesis(resourceId, adviserID);
+                await importBook(data['ISBN'].replace(/\s+/g, ''), resourceId, pubId, topicId, imageFile);
+            }else if(['2', '3'].includes(selectedType)){
+
             }
         }
 
         // **Send a response after processing all items**
         res.status(200).json({
             message: 'Import completed successfully.',
-            insertedRecords: insertedResources,
-            invalidResources: invalidResources
+            insertedRecords: insertedResources
         });
     } catch (error) {
         console.error('Error in importCatalog:', error);
@@ -1103,12 +965,13 @@ export const importCatalog = async (req, res) => {
     }
 };
 
+
 //insert resource
 const importResources = async (res, deptId, data, authors, username, selectedType) => {
     return new Promise(async (resolve, reject) => {
         try {
             // Check if the resource exists
-            const resourceExists = await checkResourceIfExist(data['title'],data['authors']);
+            const resourceExists = await checkResourceIfExist(data['Title']);
 
             if (resourceExists) {
                 console.log('Resource already exists.');
@@ -1131,11 +994,11 @@ const importResources = async (res, deptId, data, authors, username, selectedTyp
             `;
 
             const resourceValues = [
-                data['title'],
-                data['description'] || '',
-                data['published date'],
-                data['quantity'],
-                data['quantity'],
+                data['Title'],
+                data['Description'] || '',
+                data['Published Date'],
+                data['Quantity'],
+                data['Quantity'],
                 selectedType==1?1:0,
                 deptId,
                 selectedType,
@@ -1149,7 +1012,7 @@ const importResources = async (res, deptId, data, authors, username, selectedTyp
 
                 // Get the `resource_id` of the newly inserted row
                 const resourceId = results.insertId;
-                logAuditAction(username, 'INSERT', 'resources', resourceId, null, JSON.stringify("Added a new resource: '" + data['title'] + "'"));
+                // logAuditAction(username, 'INSERT', 'resources', null, null, JSON.stringify("Added a new resource: '" + data['Title'] + "'"));
                 try {
                     // Insert authors for the resource
                     await insertAuthors(res, authors, resourceId);
@@ -1201,33 +1064,13 @@ const importBook = async (isbn, resourceId, pubId, topicId, imageFile) => {
 };
 
 const importJournalNewsletter = async(jn,res)=>{
-    return new Promise((resolve, reject) => {
-        const q = 'INSERT INTO journalnewsletter (jn_volume, jn_issue, filepath, resource_id, topic_id) VALUES (?, ?, ?, ?,?)';
-                
-        db.query(q, jn, (err, result) => {
-            if (err) {
-                // Reject the promise with the error
-                reject(err);
-            } else {
-                resolve(result);
-            }
+    const q = 'INSERT INTO journalnewsletter (jn_volume, jn_issue, filepath, resource_id, topic_id) VALUES (?, ?, ?, ?,?)';
             
-        });
-    })
-}
-
-//insert thesis 
-export const importThesis = async (resourceId, adviserId)=>{
-    return new Promise((resolve, reject) => {
-        const q = "INSERT INTO thesis (resource_id, adviser_id) VALUES (?,?)"
-
-        db.query(q,[resourceId,adviserId],(err,results)=>{
-            if (err) {
-                // Reject the promise with the error
-                reject(err);
-            } else {
-                resolve(results);
-            }
-        })
-    })
+    db.query(q, jn, (err, result) => {
+        if (err) {
+            return res.status(500).send(err); 
+        }
+        
+        return res.send({status: 201, message:'Journal/Newsletter inserted successfully.'});
+    });
 }
