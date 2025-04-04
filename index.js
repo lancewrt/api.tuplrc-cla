@@ -39,9 +39,8 @@ const io = new Server(httpServer, {
   cors: {
     origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true
-  },
-  transports: ['websocket'],
+    credentials: true 
+  }
 });
 
 // Make io available to all routes
