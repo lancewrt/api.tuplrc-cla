@@ -34,7 +34,7 @@ export const checkoutSearch = async (req, res) => {
         INNER JOIN 
             author a ON a.author_id = ra.author_id
         WHERE 
-            (b.book_isbn LIKE ? OR r.resource_title LIKE ?  )
+            (b.book_isbn LIKE ? OR r.resource_title LIKE ? OR r.resource_id LIKE ?)
             AND r.resource_quantity > 0
             AND r.resource_is_archived = 0
         GROUP BY 
@@ -42,7 +42,7 @@ export const checkoutSearch = async (req, res) => {
         LIMIT 10;
 
         `,
-        [`%${query}%`, `%${query}%`]
+        [`%${query}%`, `%${query}%`, `%${query}%`]
       );
       
       const covers = results.map(book => ({
