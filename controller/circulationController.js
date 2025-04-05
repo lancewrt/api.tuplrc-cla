@@ -42,7 +42,7 @@ export const checkoutSearch = async (req, res) => {
         LIMIT 10;
 
         `,
-        [`%${query}%`, `%${query}%`, `%${query}%`]
+        [`${query}%`, `%${query}%`, `${query}`]
       );
       
       const covers = results.map(book => ({
