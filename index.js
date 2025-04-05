@@ -93,7 +93,7 @@ app.use('/api/advanced-search', advancedSearchRoutes);
 //6. copy and paste new refresh token sa .env
 cron.schedule('* * * * *', () => {
   console.log('Cron running to check overdue resources')
-  checkOverdue();
+  checkOverdue(io);
 });
 
 /*--------------send email if overdue is approaching-------- */

@@ -232,7 +232,7 @@ const sendEmail = (email, name, tupid, borrowDate, borrowDue, resourceTitle, res
   });
 };
 
-export const checkOverdue = async () => {
+export const checkOverdue = async (io) => {
   console.log('checking overdue');
   const q = `
   SELECT 
@@ -316,7 +316,7 @@ export const checkOverdue = async () => {
                 }
 
                 // Use the io instance from the request object
-                req.io.emit('overdueUpdated');
+                io.emit('overdueUpdated');
 
                 console.log('New overdue entry created for checkout_id:', item.checkout_id);
                 // Send email to patron
