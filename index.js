@@ -28,30 +28,8 @@ import { inactivePatron } from './routes/patronInactiveController.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-
-// Standard middleware
 app.use(cookieParser());
-app.use(express.json());
-
-// IMPORTANT: Place CORS configuration first, before any routes
-// Set up CORS with wildcard for testing purposes
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*'); // Allow all origins temporarily
-  res.header('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    // Pre-flight request
-    return res.status(200).end();
-  }
-  
-  next();
-});
-
-// Completely disable the cors package for now
-// app.use(cors({...}));
+const PORT = process.env.PORT || 3001;
 
 // Create HTTP server from Express app
 const httpServer = createServer(app);
@@ -59,10 +37,9 @@ const httpServer = createServer(app);
 // Initialize Socket.IO with the HTTP server
 const io = new Server(httpServer, {
   cors: {
-    origin: '*', // Allow all origins temporarily
+    origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization']
+    credentials: true
   }
 });
 
@@ -81,7 +58,13 @@ io.on('connection', (socket) => {
   });
 });
 
-// Routes
+app.use(express.json());
+app.use(cors({
+  origin: ['http://localhost:3000','http://localhost:3002'],
+  methods: 'GET,POST,PUT,DELETE,OPTIONS',
+  credentials: true
+}));    
+
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
 app.use("/api/user", userRoutes);
@@ -99,14 +82,15 @@ app.use('/api/online-catalog', onlineCatalogRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/advanced-search', advancedSearchRoutes);
 
-// CORS test route to verify CORS is working
-app.get('/api/cors-test', (req, res) => {
-  res.json({ message: 'CORS is working correctly' });
-});
-
-// UNCOMMENT THE REST OF YOUR CODE BELOW FOR COMPLETENESS
-
 /*--------------check overdue resources using cron-------- */
+// check 
+// change mo lang refresh token sa .env pag ayaw masend
+//1. go to OAuth 2.0 Playground
+//2. open gear icon and paste client id and client secret from .env file
+//3. select gmail api v1 in 'select & authorize api' category
+//4. select ung https://mail.google.com/ and click authorize api
+//5. click exchange authorization code for tokens
+//6. copy and paste new refresh token sa .env
 cron.schedule('0 0 * * *', () => {
   console.log('Cron running to check overdue resources')
   checkOverdue(io);
@@ -124,6 +108,12 @@ cron.schedule('0 0 30 8 *', () => {
   console.log('Cron running to set patrons to inactive');
   inactivePatron();
 });
+
+// run every minute for testing purposes
+// cron.schedule('* * * * *', () => {
+//   console.log('Cron running to set patrons to inactive');
+//   inactivePatron();
+// });
 
 // Start the server
 httpServer.listen(PORT, () => {
