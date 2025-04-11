@@ -29,15 +29,57 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Define allowed origins
+const allowedOrigins = [
+  'https://admin.tuplrc-cla.com',
+  'https://www.tuplrc-cla.com',
+  'https://api.tuplrc-cla.com'
+];
+
+// Custom CORS middleware to ensure headers are properly set
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
+// Standard middleware
 app.use(cookieParser());
-
 app.use(express.json());
-app.use(cors({
-  origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com','https://api.tuplrc-cla.com'],
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  credentials: true
-}));    
 
+// Regular CORS middleware as a backup
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log("Origin not allowed by CORS:", origin);
+      callback(null, false);
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}));
+
+// Enable pre-flight for all routes
+app.options('*', cors());
 
 // Create HTTP server from Express app
 const httpServer = createServer(app);
@@ -45,8 +87,8 @@ const httpServer = createServer(app);
 // Initialize Socket.IO with the HTTP server
 const io = new Server(httpServer, {
   cors: {
-    origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com','https://api.tuplrc-cla.com'],
-    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
   }
 });
@@ -66,7 +108,7 @@ io.on('connection', (socket) => {
   });
 });
 
-
+// Routes
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
 app.use("/api/user", userRoutes);
@@ -83,6 +125,11 @@ app.use('/api/validate-tup-id', validateTupId);
 app.use('/api/online-catalog', onlineCatalogRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/advanced-search', advancedSearchRoutes);
+
+// CORS test route to verify CORS is working
+app.get('/api/cors-test', (req, res) => {
+  res.json({ message: 'CORS is working correctly' });
+});
 
 /*--------------check overdue resources using cron-------- */
 // check 
@@ -110,15 +157,6 @@ cron.schedule('0 0 30 8 *', () => {
   console.log('Cron running to set patrons to inactive');
   inactivePatron();
 });
-
-// run every minute for testing purposes
-// cron.schedule('* * * * *', () => {
-//   console.log('Cron running to set patrons to inactive');
-//   inactivePatron();
-// });
-
-
-
 
 // Start the server
 httpServer.listen(PORT, () => {
