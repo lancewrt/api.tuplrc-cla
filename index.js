@@ -34,6 +34,12 @@ const PORT = process.env.PORT || 3001;
 // Create HTTP server from Express app
 const httpServer = createServer(app);
 
+app.use(cors({
+  origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com'],
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  credentials: true
+}));   
+
 // Initialize Socket.IO with the HTTP server
 const io = new Server(httpServer, {
   cors: {
@@ -56,14 +62,9 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
-});
+}); 
 
 app.use(express.json());
-app.use(cors({
-  origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com'],
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  credentials: true
-}));    
 
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
