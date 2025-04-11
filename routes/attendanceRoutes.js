@@ -1,8 +1,12 @@
-import express from 'express'
-import { attendance } from '../controller/attendanceController.js'
+import express from 'express';
+import { attendance } from '../controller/attendanceController.js';
 
-const router = express.Router()
+// Export a function that takes wss and returns a router
+export const attendanceRoutesWss = (wss)=> {
+  const router = express.Router();
 
-router.post('/', attendance)
+  // Pass wss to your controller function
+  router.post('/', (req, res) => attendance(req, res, wss));
 
-export default router
+  return router;
+}

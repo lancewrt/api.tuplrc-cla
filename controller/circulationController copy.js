@@ -34,7 +34,7 @@ export const checkoutSearch = async (req, res) => {
         INNER JOIN 
             author a ON a.author_id = ra.author_id
         WHERE 
-            (b.book_isbn LIKE ? OR r.resource_title LIKE ? OR r.resource_id LIKE ?)
+            (b.book_isbn LIKE ? OR r.resource_title LIKE ?  )
             AND r.resource_quantity > 0
             AND r.resource_is_archived = 0
         GROUP BY 
@@ -42,7 +42,7 @@ export const checkoutSearch = async (req, res) => {
         LIMIT 10;
 
         `,
-        [`${query}%`, `%${query}%`, `${query}`]
+        [`%${query}%`, `%${query}%`]
       );
       
       const covers = results.map(book => ({
@@ -120,7 +120,7 @@ export const checkinSearch = async (req, res) => {
     }
 };
 
-export const checkoutRecord = (req, res, wss) => {
+export const checkoutRecord = (req, res) => {
     const { resource_id, patron_id } = req.query;
     const query = 'SELECT checkout_id FROM checkout WHERE resource_id = ? AND patron_id = ? AND (status = "borrowed" OR status= "overdue") ';
 
@@ -135,7 +135,7 @@ export const checkoutRecord = (req, res, wss) => {
     });
 };
 
-export const checkIn = async (req, res, wss) => {
+export const checkIn = async (req, res) => {
     const { checkout_id, returned_date, patron_id, resource_id, username } = req.body;
 
     if (!checkout_id || !returned_date) {
@@ -175,14 +175,6 @@ export const checkIn = async (req, res, wss) => {
             'UPDATE resources SET resource_quantity = resource_quantity + 1 WHERE resource_id = ?';
         await db.query(incrementResourceQuery, [resource_id]);
 
-        // Check if checkout_id exists in the overdue table
-        const [overdueRecord] = await db.query('SELECT * FROM overdue WHERE checkout_id = ?', [checkout_id]);
-
-        if (overdueRecord.length > 0) {
-            // If it exists, delete it
-            await db.query('DELETE FROM overdue WHERE checkout_id = ?', [checkout_id]);
-        }
-
         // Commit the transaction
         await db.query('COMMIT');
 
@@ -209,12 +201,8 @@ export const checkIn = async (req, res, wss) => {
             JSON.stringify("Patron: " + patron_name + " returned a book: '" + resource_title + "'")
         );
 
-        // Broadcast to all WebSocket clients
-        wss.clients.forEach(client => {
-            if (client.readyState === 1) {
-            client.send(JSON.stringify({ event: "checkinUpdated"}));
-            }
-        });
+        // Use the io instance from the request object
+        req.io.emit('checkinUpdated');
 
         res.status(201).json({
             message: 'Item successfully checked in and removed from checkout.',
@@ -230,7 +218,7 @@ export const checkIn = async (req, res, wss) => {
     }
 };
 
-export const checkOut =  async (req, res, wss) => {
+export const checkOut =  async (req, res) => {
     const { checkout_date, checkout_due, resource_id, patron_id, username } = req.body;
 
     if (!checkout_date || !checkout_due || !resource_id || !patron_id) {
@@ -303,12 +291,8 @@ export const checkOut =  async (req, res, wss) => {
         // Commit the transaction
         await db.query('COMMIT');
 
-        // Broadcast to all WebSocket clients
-        wss.clients.forEach(client => {
-            if (client.readyState === 1) {
-            client.send(JSON.stringify({ event: "checkoutUpdated"}));
-            }
-        });
+        // Use the io instance from the request object
+        req.io.emit('checkoutUpdated');
 
         res.status(200).json({
             message: 'Checkout successful!',

@@ -216,6 +216,7 @@ export const checkIn = (req, res) => {
                     p.patron_fname,
                     p.patron_lname,
                     p.patron_email,
+                    p.status,
                     p.category,
                     cr.course_name,
                     COUNT(c.checkout_id) AS total_checkouts

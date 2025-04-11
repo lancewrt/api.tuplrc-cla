@@ -120,7 +120,7 @@ export const checkinSearch = async (req, res) => {
     }
 };
 
-export const checkoutRecord = (req, res, wss) => {
+export const checkoutRecord = (req, res) => {
     const { resource_id, patron_id } = req.query;
     const query = 'SELECT checkout_id FROM checkout WHERE resource_id = ? AND patron_id = ? AND (status = "borrowed" OR status= "overdue") ';
 
@@ -135,7 +135,7 @@ export const checkoutRecord = (req, res, wss) => {
     });
 };
 
-export const checkIn = async (req, res, wss) => {
+export const checkIn = async (req, res) => {
     const { checkout_id, returned_date, patron_id, resource_id, username } = req.body;
 
     if (!checkout_id || !returned_date) {
@@ -209,12 +209,8 @@ export const checkIn = async (req, res, wss) => {
             JSON.stringify("Patron: " + patron_name + " returned a book: '" + resource_title + "'")
         );
 
-        // Broadcast to all WebSocket clients
-        wss.clients.forEach(client => {
-            if (client.readyState === 1) {
-            client.send(JSON.stringify({ event: "checkinUpdated"}));
-            }
-        });
+        // Use the io instance from the request object
+        req.io.emit('checkinUpdated');
 
         res.status(201).json({
             message: 'Item successfully checked in and removed from checkout.',
@@ -230,7 +226,7 @@ export const checkIn = async (req, res, wss) => {
     }
 };
 
-export const checkOut =  async (req, res, wss) => {
+export const checkOut =  async (req, res) => {
     const { checkout_date, checkout_due, resource_id, patron_id, username } = req.body;
 
     if (!checkout_date || !checkout_due || !resource_id || !patron_id) {
@@ -303,12 +299,8 @@ export const checkOut =  async (req, res, wss) => {
         // Commit the transaction
         await db.query('COMMIT');
 
-        // Broadcast to all WebSocket clients
-        wss.clients.forEach(client => {
-            if (client.readyState === 1) {
-            client.send(JSON.stringify({ event: "checkoutUpdated"}));
-            }
-        });
+        // Use the io instance from the request object
+        req.io.emit('checkoutUpdated');
 
         res.status(200).json({
             message: 'Checkout successful!',

@@ -232,7 +232,7 @@ const sendEmail = (email, name, tupid, borrowDate, borrowDue, resourceTitle, res
   });
 };
 
-export const checkOverdue = async (io) => {
+export const checkOverdue = async (wss) => {
   console.log('checking overdue');
   const q = `
   SELECT 
@@ -316,7 +316,11 @@ export const checkOverdue = async (io) => {
                 }
 
                 // Use the io instance from the request object
-                io.emit('overdueUpdated');
+                wss.clients.forEach(client => {
+                  if (client.readyState === 1) {
+                    client.send(JSON.stringify({ event: 'overdueUpdated', data: item }));
+                  }
+                });
 
                 console.log('New overdue entry created for checkout_id:', item.checkout_id);
                 // Send email to patron
