@@ -30,61 +30,28 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Define allowed origins
-const allowedOrigins = [
-  'https://admin.tuplrc-cla.com',
-  'https://www.tuplrc-cla.com',
-  'https://api.tuplrc-cla.com'
-];
-
 // Standard middleware
 app.use(cookieParser());
 app.use(express.json());
 
-// Add explicit CORS headers for all responses
+// IMPORTANT: Place CORS configuration first, before any routes
+// Set up CORS with wildcard for testing purposes
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Origin', '*'); // Allow all origins temporarily
+  res.header('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
   
-  // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    // Pre-flight request
     return res.status(200).end();
   }
   
   next();
 });
 
-// Regular CORS middleware as a backup
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
-}));
-
-// Enable pre-flight for all routes - additional protection
-app.options(allowedOrigins, (req, res) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.status(200).end();
-});
+// Completely disable the cors package for now
+// app.use(cors({...}));
 
 // Create HTTP server from Express app
 const httpServer = createServer(app);
@@ -92,9 +59,10 @@ const httpServer = createServer(app);
 // Initialize Socket.IO with the HTTP server
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: '*', // Allow all origins temporarily
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization']
   }
 });
 
@@ -135,6 +103,8 @@ app.use('/api/advanced-search', advancedSearchRoutes);
 app.get('/api/cors-test', (req, res) => {
   res.json({ message: 'CORS is working correctly' });
 });
+
+// UNCOMMENT THE REST OF YOUR CODE BELOW FOR COMPLETENESS
 
 /*--------------check overdue resources using cron-------- */
 cron.schedule('0 0 * * *', () => {
