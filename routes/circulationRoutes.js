@@ -6,9 +6,7 @@ const router = express.Router();
 router.get('/checkout/search', checkoutSearch);
 router.get('/checkin/search', checkinSearch);
 router.get('/checkout-record', checkoutRecord)
-router.post('/checkin',  (req, res) => checkIn(req, res, wss));
-router.post('/checkout', (req, res) => checkOut(req, res, wss));  
+router.post('/checkin', checkIn);
+router.post('/checkout',checkOut);  
 
 export default router;
-
-
