@@ -28,8 +28,16 @@ import { inactivePatron } from './routes/patronInactiveController.js';
 dotenv.config();
 
 const app = express();
-app.use(cookieParser());
 const PORT = process.env.PORT || 3001;
+app.use(cookieParser());
+
+app.use(express.json());
+app.use(cors({
+  origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com','https://api.tuplrc-cla.com'],
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  credentials: true
+}));    
+
 
 // Create HTTP server from Express app
 const httpServer = createServer(app);
@@ -58,12 +66,6 @@ io.on('connection', (socket) => {
   });
 });
 
-app.use(express.json());
-app.use(cors({
-  origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com','https://api.tuplrc-cla.com'],
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  credentials: true
-}));    
 
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
