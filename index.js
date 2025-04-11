@@ -4,6 +4,7 @@ import cors from "cors";
 import cron from 'node-cron';
 import cookieParser from 'cookie-parser';
 process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 1;
+
 import resourceRoutes from "./routes/resourceRoutes.js";
 import dataRoutes from "./routes/dataRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -19,7 +20,7 @@ import isbnRoutes from './routes/isbnRoutes.js';
 import validateTupId from './routes/validateTupId.js';
 import onlineCatalogRoutes from './routes/onlineCatalogRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
-import advancedSearchRoutes from './routes/advancedSearchRoutes.js'
+import advancedSearchRoutes from './routes/advancedSearchRoutes.js';
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { approachingOverdue, checkOverdue } from './controller/overdueController.js';
@@ -29,14 +30,21 @@ dotenv.config();
 
 const app = express();
 app.use(cookieParser());
-app.options('*', cors()); // Enable pre-flight for all routes
 const PORT = process.env.PORT || 3001;
 
 // Create HTTP server from Express app
 const httpServer = createServer(app);
 
 // Initialize Socket.IO with the HTTP server
-// Use more detailed CORS configuration
+const io = new Server(httpServer, {
+  cors: {
+    origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true
+  }
+});
+
+// Apply CORS middleware ONCE before routes
 app.use(cors({
   origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -48,6 +56,9 @@ app.use(cors({
 
 // Handle OPTIONS requests explicitly
 app.options('*', cors());
+
+// Parse JSON before applying routes
+app.use(express.json());
 
 // Make io available to all routes
 app.use((req, res, next) => {
@@ -64,13 +75,7 @@ io.on('connection', (socket) => {
   });
 });
 
-app.use(express.json());
-app.use(cors({
-  origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com'],
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  credentials: true
-}));    
-
+// Apply routes
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
 app.use("/api/user", userRoutes);
@@ -89,22 +94,14 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/advanced-search', advancedSearchRoutes);
 
 /*--------------check overdue resources using cron-------- */
-// check 
-// change mo lang refresh token sa .env pag ayaw masend
-//1. go to OAuth 2.0 Playground
-//2. open gear icon and paste client id and client secret from .env file
-//3. select gmail api v1 in 'select & authorize api' category
-//4. select ung https://mail.google.com/ and click authorize api
-//5. click exchange authorization code for tokens
-//6. copy and paste new refresh token sa .env
 cron.schedule('0 0 * * *', () => {
-  console.log('Cron running to check overdue resources')
+  console.log('Cron running to check overdue resources');
   checkOverdue(io);
 });
 
 /*--------------send email if overdue is approaching-------- */
 cron.schedule('0 0 * * *', () => {
-  console.log('Cron running to check approaching overdue')
+  console.log('Cron running to check approaching overdue');
   approachingOverdue();
 });
 
@@ -114,15 +111,6 @@ cron.schedule('0 0 30 8 *', () => {
   console.log('Cron running to set patrons to inactive');
   inactivePatron();
 });
-
-// run every minute for testing purposes
-// cron.schedule('* * * * *', () => {
-//   console.log('Cron running to set patrons to inactive');
-//   inactivePatron();
-// });
-
-
-
 
 // Start the server
 httpServer.listen(PORT, () => {
