@@ -37,7 +37,7 @@ const httpServer = createServer(app);
 // Initialize Socket.IO with the HTTP server
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3002'],
+    origin: ['https:/admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
   }
@@ -60,7 +60,7 @@ io.on('connection', (socket) => {
 
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000','http://localhost:3002'],
+  origin: ['https:/admin.tuplrc-cla.com','https://www.tuplrc-cla.com'],
   methods: 'GET,POST,PUT,DELETE,OPTIONS',
   credentials: true
 }));    
