@@ -1,6 +1,6 @@
 import { db } from "../config/db.js";
 
-export const attendance = (req, res,wss) => {
+export const attendance = (req, res) => {
   const studentId = req.body.studentId;
   const date = req.body.date;
   const time = req.body.time;
@@ -30,12 +30,8 @@ export const attendance = (req, res,wss) => {
         return res.status(500).json({ success: false, message: "Failed to log attendance." });
       }
       
-      // Broadcast to all WebSocket clients
-      wss.clients.forEach(client => {
-        if (client.readyState === 1) {
-          client.send(JSON.stringify({ event: "attendanceUpdated", data: { studentId, studentName, date, time } }));
-        }
-      });
+      // Use the io instance from the request object
+      req.io.emit('attendanceUpdated');
       
       return res.status(200).json({
         success: true,

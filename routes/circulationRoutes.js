@@ -1,7 +1,6 @@
 import express from "express";
 import { checkIn, checkinSearch, checkOut, checkoutRecord, checkoutSearch } from "../controller/circulationController.js";
 
-export const circulationRoutesWss = (wss)=>{
     const router = express.Router();
 
     router.get('/checkout/search', checkoutSearch);
@@ -11,5 +10,5 @@ export const circulationRoutesWss = (wss)=>{
     router.post('/checkout', (req, res) => checkOut(req, res, wss));  
 
     return router; 
-}
+
 
