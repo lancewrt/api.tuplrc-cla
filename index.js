@@ -36,13 +36,18 @@ const PORT = process.env.PORT || 3001;
 const httpServer = createServer(app);
 
 // Initialize Socket.IO with the HTTP server
-const io = new Server(httpServer, {
-  cors: {
-    origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true 
-  }
-});
+// Use more detailed CORS configuration
+app.use(cors({
+  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}));
+
+// Handle OPTIONS requests explicitly
+app.options('*', cors());
 
 // Make io available to all routes
 app.use((req, res, next) => {
