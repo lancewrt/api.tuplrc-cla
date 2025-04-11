@@ -41,6 +41,24 @@ const allowedOrigins = [
 app.use(cookieParser());
 app.use(express.json());
 
+// Add explicit CORS headers for all responses
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
 // Regular CORS middleware as a backup
 app.use(cors({
   origin: function (origin, callback) {
@@ -56,8 +74,17 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// Enable pre-flight for all routes
-app.options('*', cors());
+// Enable pre-flight for all routes - additional protection
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.status(200).end();
+});
 
 // Create HTTP server from Express app
 const httpServer = createServer(app);
@@ -110,14 +137,6 @@ app.get('/api/cors-test', (req, res) => {
 });
 
 /*--------------check overdue resources using cron-------- */
-// check 
-// change mo lang refresh token sa .env pag ayaw masend
-//1. go to OAuth 2.0 Playground
-//2. open gear icon and paste client id and client secret from .env file
-//3. select gmail api v1 in 'select & authorize api' category
-//4. select ung https://mail.google.com/ and click authorize api
-//5. click exchange authorization code for tokens
-//6. copy and paste new refresh token sa .env
 cron.schedule('0 0 * * *', () => {
   console.log('Cron running to check overdue resources')
   checkOverdue(io);
