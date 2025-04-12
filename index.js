@@ -78,6 +78,10 @@ app.use('/api/validate-tup-id', validateTupId);
 app.use('/api/online-catalog', onlineCatalogRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/advanced-search', advancedSearchRoutes);
+app.get('/api/ping', (req, res) => {
+  res.json({ msg: "API is working" });
+});
+
 
 /*--------------check overdue resources using cron-------- */
 // check 
@@ -111,9 +115,6 @@ cron.schedule('0 0 30 8 *', () => {
 //   console.log('Cron running to set patrons to inactive');
 //   inactivePatron();
 // });
-
-
-
 
 // Start the server
 httpServer.listen(PORT, () => {
