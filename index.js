@@ -34,6 +34,9 @@ const corsOptions = {
   credentials: true
 }
 
+app.use(cors(corsOptions));
+
+app.options('*', cors(corsOptions)); // 🔥 this handles preflight properly
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -58,8 +61,6 @@ app.use((req, res, next) => {
   req.io = io;
   next();
 });
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // 🔥 this handles preflight properly
 app.use(express.json()); 
 app.use(cookieParser());  
 
