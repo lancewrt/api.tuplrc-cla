@@ -10,7 +10,7 @@ import { Server } from 'socket.io';
 const app = express()
 app.use(express.json())
 app.use(cors({
-    origin: 'https://admin.tuplrc-cla.com',
+    origin: 'http://localhost:3000',
     methods: 'GET,POST,PUT,DELETE'
 }));
 
@@ -41,7 +41,7 @@ const server = http.createServer(app)
 const io = new Server(server,{
     cors:{
         // url for frontend
-        origin:"https://admin.tuplrc-cla.com",
+        origin:"http://localhost:3000",
     }
 })
 

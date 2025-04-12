@@ -316,7 +316,7 @@ export const checkOverdue = async () => {
                 }
 
                 // Use the io instance from the request object
-                // req.io.emit('overdueUpdated');
+                req.io.emit('overdueUpdated');
 
                 console.log('New overdue entry created for checkout_id:', item.checkout_id);
                 // Send email to patron
