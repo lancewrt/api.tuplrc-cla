@@ -31,7 +31,7 @@ export const attendance = (req, res) => {
       }
       
       // Use the io instance from the request object
-      req.io.emit('attendanceUpdated');
+      // req.io.emit('attendanceUpdated');
       
       return res.status(200).json({
         success: true,

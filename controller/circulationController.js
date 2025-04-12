@@ -210,7 +210,7 @@ export const checkIn = async (req, res) => {
         );
 
         // Use the io instance from the request object
-        req.io.emit('checkinUpdated');
+        // req.io.emit('checkinUpdated');
 
         res.status(201).json({
             message: 'Item successfully checked in and removed from checkout.',
@@ -300,7 +300,7 @@ export const checkOut =  async (req, res) => {
         await db.query('COMMIT');
 
         // Use the io instance from the request object
-        req.io.emit('checkoutUpdated');
+        // req.io.emit('checkoutUpdated');
 
         res.status(200).json({
             message: 'Checkout successful!',

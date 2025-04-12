@@ -30,17 +30,17 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Create HTTP server from Express app
-const httpServer = createServer(app);
+// // Create HTTP server from Express app
+// const httpServer = createServer(app);
 
-// Initialize Socket.IO with the HTTP server
-const io = new Server(httpServer, {
-  cors: {
-    origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true
-  }
-});
+// // Initialize Socket.IO with the HTTP server
+// const io = new Server(httpServer, {
+//   cors: {
+//     origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//     credentials: true
+//   }
+// });
 
 // IMPORTANT: Add middlewares in the correct order
 // 1. CORS middleware first
@@ -60,20 +60,20 @@ app.use(express.urlencoded({ extended: true }));
 // 3. Cookie parser
 app.use(cookieParser());
 
-// Make io available to all routes
-app.use((req, res, next) => {
-  req.io = io;
-  next();
-});
+// // Make io available to all routes
+// app.use((req, res, next) => {
+//   req.io = io;
+//   next();
+// });
 
-// Socket.IO connection handler
-io.on('connection', (socket) => {
-  console.log('A client connected:', socket.id);
+// // Socket.IO connection handler
+// io.on('connection', (socket) => {
+//   console.log('A client connected:', socket.id);
   
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
-});
+//   socket.on('disconnect', () => {
+//     console.log('Client disconnected:', socket.id);
+//   });
+// });
 
 // Add a general error handler for preflight issues
 app.options('*', cors());
@@ -110,23 +110,23 @@ app.use('/api/advanced-search', advancedSearchRoutes);
 //4. select ung https://mail.google.com/ and click authorize api
 //5. click exchange authorization code for tokens
 //6. copy and paste new refresh token sa .env
-cron.schedule('0 0 * * *', () => {
-  console.log('Cron running to check overdue resources')
-  checkOverdue(io);
-});
+// cron.schedule('0 0 * * *', () => {
+//   console.log('Cron running to check overdue resources')
+//   checkOverdue(io);
+// });
 
-/*--------------send email if overdue is approaching-------- */
-cron.schedule('0 0 * * *', () => {
-  console.log('Cron running to check approaching overdue')
-  approachingOverdue();
-});
+// /*--------------send email if overdue is approaching-------- */
+// cron.schedule('0 0 * * *', () => {
+//   console.log('Cron running to check approaching overdue')
+//   approachingOverdue();
+// });
 
-/*------------automatically set patrons to inactive after 4 years---------------- */
-//runs at midnight, on the 30th month of august, every year
-cron.schedule('0 0 30 8 *', () => {
-  console.log('Cron running to set patrons to inactive');
-  inactivePatron();
-});
+// /*------------automatically set patrons to inactive after 4 years---------------- */
+// //runs at midnight, on the 30th month of august, every year
+// cron.schedule('0 0 30 8 *', () => {
+//   console.log('Cron running to set patrons to inactive');
+//   inactivePatron();
+// });
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -138,10 +138,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start the server
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// // Start the server
+// httpServer.listen(PORT, () => {
+//   console.log(`Server running on port ${PORT}`);
+// });
 
-// Export io for external use if needed
-export { io };
+// // Export io for external use if needed
+// export { io };
