@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import cron from 'node-cron';
 import cookieParser from 'cookie-parser';
-process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 1;
+// process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 1;
 import resourceRoutes from "./routes/resourceRoutes.js";
 import dataRoutes from "./routes/dataRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -27,27 +27,22 @@ import { inactivePatron } from './routes/patronInactiveController.js';
 
 dotenv.config();
 
+const corsOptions = {
+  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ["Content-Type", "Authorization", "Access-Control-Allow-Methods", "Access-Control-Request-Headers"],
+  credentials: true,
+  enablePreflight: true
+}
+
 const app = express();
-app.use(cookieParser());
 const PORT = process.env.PORT || 3001;
 
 // Create HTTP server from Express app
 const httpServer = createServer(app);
 
 // Initialize Socket.IO with the HTTP server
-const io = new Server(httpServer, {
-  cors: {
-    origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com/'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true
-  }
-});
-
-// Make io available to all routes
-app.use((req, res, next) => {
-  req.io = io;
-  next();
-});
+const io = new Server(httpServer, corsOptions);
 
 // Socket.IO connection handler
 io.on('connection', (socket) => {
@@ -58,12 +53,14 @@ io.on('connection', (socket) => {
   });
 });
 
+// Make io available to all routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
 app.use(express.json());
-app.use(cors({
-  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com/'],
-  methods: 'GET,POST,PUT,DELETE,OPTIONS',
-  credentials: true
-}));    
+app.use(cors(corsOptions));  
+app.use(cookieParser());  
 
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
