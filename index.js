@@ -28,7 +28,6 @@ import { inactivePatron } from './routes/patronInactiveController.js';
 dotenv.config();
 
 const app = express();
-app.use(cookieParser());
 const PORT = process.env.PORT || 3001;
 
 // Create HTTP server from Express app
@@ -37,11 +36,29 @@ const httpServer = createServer(app);
 // Initialize Socket.IO with the HTTP server
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',
+    origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
   }
 });
+
+// IMPORTANT: Add middlewares in the correct order
+// 1. CORS middleware first
+app.use(cors({
+  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'], 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}));
+
+// 2. Body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 3. Cookie parser
+app.use(cookieParser());
 
 // Make io available to all routes
 app.use((req, res, next) => {
@@ -58,13 +75,15 @@ io.on('connection', (socket) => {
   });
 });
 
-app.use(express.json());
-app.use(cors({
-  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'], 
-  methods: 'GET,POST,PUT,DELETE,OPTIONS',
-  credentials: true
-}));    
+// Add a general error handler for preflight issues
+app.options('*', cors());
 
+// Add a health check endpoint to verify the API is running
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'API is running' });
+});
+
+// API routes
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
 app.use("/api/user", userRoutes);
@@ -109,11 +128,15 @@ cron.schedule('0 0 30 8 *', () => {
   inactivePatron();
 });
 
-// run every minute for testing purposes
-// cron.schedule('* * * * *', () => {
-//   console.log('Cron running to set patrons to inactive');
-//   inactivePatron();
-// });
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    status: 'error',
+    message: 'An unexpected error occurred',
+    error: process.env.NODE_ENV === 'production' ? null : err.message
+  });
+});
 
 // Start the server
 httpServer.listen(PORT, () => {
