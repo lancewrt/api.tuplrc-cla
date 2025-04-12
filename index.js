@@ -28,7 +28,7 @@ import { inactivePatron } from './routes/patronInactiveController.js';
 dotenv.config();
 
 const corsOptions = {
-  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
+  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com','http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ["Content-Type", "Authorization", "Access-Control-Allow-Methods", "Access-Control-Request-Headers"],
   credentials: true,
