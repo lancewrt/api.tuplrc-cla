@@ -60,7 +60,7 @@ io.on('connection', (socket) => {
 
 app.use(express.json());
 app.use(cors({
-  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
+  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'], 
   methods: 'GET,POST,PUT,DELETE,OPTIONS',
   credentials: true
 }));    
