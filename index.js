@@ -30,10 +30,10 @@ dotenv.config();
 const corsOptions = {
   origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com','http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ["Content-Type", "Authorization", "Access-Control-Allow-Methods", "Access-Control-Request-Headers"],
-  credentials: true,
-  enablePreflight: true
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -58,8 +58,9 @@ app.use((req, res, next) => {
   req.io = io;
   next();
 });
-app.use(express.json());
-app.use(cors(corsOptions));  
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // 🔥 this handles preflight properly
+app.use(express.json()); 
 app.use(cookieParser());  
 
 app.use("/api/resources", resourceRoutes);
