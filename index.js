@@ -39,7 +39,7 @@ const io = new Server(httpServer, {
   cors: {
     origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true 
+    credentials: true
   }
 });
 
@@ -60,8 +60,8 @@ io.on('connection', (socket) => {
 
 app.use(express.json());
 app.use(cors({
-  origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com'],
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  origin: ['https://admin.tuplrc-cla.com', 'https://www.tuplrc-cla.com'],
+  methods: 'GET,POST,PUT,DELETE,OPTIONS',
   credentials: true
 }));    
 
@@ -114,9 +114,6 @@ cron.schedule('0 0 30 8 *', () => {
 //   console.log('Cron running to set patrons to inactive');
 //   inactivePatron();
 // });
-
-
-
 
 // Start the server
 httpServer.listen(PORT, () => {
