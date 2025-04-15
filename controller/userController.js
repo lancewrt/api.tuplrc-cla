@@ -116,3 +116,80 @@ export const checkSession = (req, res) => {
         return res.status(200).json({ loggedIn: true, userID:decoded.id, userRole: decoded.role, username: decoded.username });
     });
 };
+
+export const profile = (req,res)=>{
+    const {id} = req.params
+    console.log(id)
+
+    const q = `
+        SELECT 
+            s.staff_uname,
+            s.staff_fname,
+            s.staff_lname,
+            r.role_name 
+        FROM staffaccount s
+        JOIN roles r ON r.role_id = s.role_id
+        WHERE s.staff_id = ?
+    `
+
+    db.query(q,id,(err,results)=>{
+        if(err) return res.send(err)
+           return res.json(results)
+    })
+}
+
+export const checkUsername = (req, res) => {
+    const { username } = req.params;
+    const { excludeId } = req.query;
+
+    let q = 'SELECT * FROM staffaccount WHERE staff_uname = ?';
+    const params = [username];
+
+    // Optional: Exclude the current user from the check
+    if (excludeId) {
+        q += ' AND staff_id != ?';
+        params.push(excludeId);
+    }
+
+    db.query(q, params, (err, results) => {
+        if (err) return res.status(500).json({ error: err });
+    
+        // Return the opposite of your current logic for clarity
+        if (results.length > 0) {
+            return res.json({ exists: true });  // Username is already taken
+        } else {
+            return res.json({ exists: false });  // Username is available
+        }
+    });    
+};
+
+export const updateAccount = (req,res)=>{
+    const {id} = req.params
+    const {
+        username,
+        firstName,
+        lastName
+    } = req.body
+
+    const q = `
+        UPDATE staffaccount
+        SET
+            staff_uname = ?,
+            staff_fname = ?,
+            staff_lname = ?
+        WHERE staff_id = ?
+    `
+
+    logAuditAction(
+        username,
+        'UPDATE',
+        'staffaccount',
+        null,
+        null,
+        JSON.stringify("Updated an account: " + firstName + " " + lastName))
+
+    db.query(q,[username,firstName,lastName,id],(err,results)=>{
+        if(err) return res.send(err)
+           return res.json(results)
+    })
+}
