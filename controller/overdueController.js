@@ -1,18 +1,7 @@
 import { db } from "../config/db.js";
-import nodemailer from 'nodemailer';
+import { transporter } from "../mailer/mailer.js";
 
 const sendEmail = (email, name, tupid, borrowDate, borrowDue, resourceTitle, resourceId) => {
-  let transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user: process.env.USER_EMAIL,
-      clientId: process.env.CLIENT_ID,
-      clientSecret: process.env.CLIENT_SECRET,
-      refreshToken: process.env.REFRESH_TOKEN
-    }
-  });
-
   let borrowerData = {
     borrower_name: name,
     borrower_id: tupid,
@@ -384,17 +373,6 @@ export const approachingOverdue = async () => {
 };
 
 const sendEmail2 = (email, name, tupid, borrowDate, borrowDue, resourceTitle, resourceId) => {
-  let transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user: process.env.USER_EMAIL,
-      clientId: process.env.CLIENT_ID,
-      clientSecret: process.env.CLIENT_SECRET,
-      refreshToken: process.env.REFRESH_TOKEN
-    }
-  });
-
   let borrowerData = {
     borrower_name: name,
     borrower_id: tupid,

@@ -1,6 +1,10 @@
 import { db } from "../config/db.js";
+import { mailOptions } from "../email/activationEmail.js";
+import { transporter } from "../mailer/mailer.js";
+import { generateToken } from "../utils/generateToken.js";
 import { logAuditAction } from "./auditController.js";
 import bcrypt from 'bcrypt';
+
 
 const saltRounds = 10;
 
@@ -446,3 +450,289 @@ export const deactivateAccount = (req, res) => {
         });
     });
 }
+
+export const invite = (req,res)=>{
+    try {
+        const { 
+            fname,
+            lname,
+            uname,
+            role,
+            email
+         } = req.body;
+        console.log(req.body)
+
+        const token = generateToken();
+        // Set expiry for 24 hours
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        const invValues = [
+            fname,
+            lname,
+            uname,
+            role,
+            email,
+            token,
+            expiresAt
+        ]
+
+        const query = `
+            INSERT INTO invitation (fname, lname, uname, role_id, email, token, token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+        db.query(query, invValues, (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send({ error: 'Database query failed' });
+            }
+    
+            // // Log the audit action
+            // logAuditAction(username, 'UPDATE', 'staffaccount', staffUname, 'active', JSON.stringify("Deactivated a user: " + staffUname));
+
+            const activationLink = `https://admin.tuplrc-cla.com/activate?token=${token}`;
+
+            // Send email
+            transporter.sendMail(mailOptions(email,fname,activationLink), function(err, data) {
+                if (err) {
+                  console.log("Error " + err);
+                } else {
+                  console.log("Email sent successfully");
+                  return res.status(200).json({ success: true });
+                }
+              });
+            });
+    } catch (error) {
+        console.error('Unexpected error in invite endpoint:', error);
+        return res.status(500).json({ error: 'Server error' });
+    }
+}
+
+export const verifyToken = async (req, res) => {
+    const { token } = req.query;
+    console.log('Received token:', token);
+  
+    if (!token) return res.status(400).json({ message: 'Token is required.' });
+  
+    const query = `SELECT * FROM invitation WHERE token = ? AND is_used = false`;
+  
+    db.query(query, [token], (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).send({ error: 'Database query failed' });
+      }
+  
+      if (results.length === 0) {
+        return res.status(400).json({ message: 'Invalid or already used token.' });
+      }
+  
+      const invitation = results[0];
+  
+      if (new Date(invitation.token_expires_at) < new Date()) {
+        return res.status(400).json({ message: 'Token expired.' });
+      }
+  
+      return res.status(200).json({ message: 'Token is valid.', email: invitation.email });
+    });
+  };
+;
+
+export const activate = async (req, res) => {
+    const { token, password } = req.body;
+  
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Token and password are required.' });
+    }
+  
+    const query = `SELECT * FROM invitation WHERE token = ? AND is_used = false`;
+  
+    db.query(query, [token], async (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).send({ error: 'Database query failed' });
+      }
+  
+      if (results.length === 0) {
+        return res.status(400).json({ message: 'Invalid or already used token.' });
+      }
+  
+      const invitation = results[0];
+  
+      if (new Date(invitation.token_expires_at) < new Date()) {
+        return res.status(400).json({ message: 'Token expired.' });
+      }
+  
+      try {
+        // 1. Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const insertValues = [
+            invitation.uname,
+            invitation.fname,
+            invitation.lname,
+            hashedPassword,
+            invitation.email,
+            invitation.role_id
+        ]
+  
+        // 2. Insert the user into the users table
+        const insertQuery = `
+            INSERT INTO staffaccount (
+                staff_uname, 
+                staff_fname,
+                staff_lname,
+                staff_password,
+                staff_email,
+                role_id) 
+            VALUES (?, ?, ?, ?, ?,?)`;
+
+        db.query(insertQuery, insertValues, (insertErr) => {
+          if (insertErr) {
+            console.error('User creation failed:', insertErr);
+            return res.status(500).json({ message: 'Failed to create user.' });
+          }
+  
+          // 3. Update the invitation to mark it as used
+          const updateQuery = `UPDATE invitation SET is_used = true WHERE inv_id = ?`;
+          db.query(updateQuery, [invitation.inv_id], (updateErr) => {
+            if (updateErr) {
+              console.error('Failed to update invitation:', updateErr);
+              return res.status(500).json({ message: 'Failed to update invitation.' });
+            }
+  
+            return res.status(200).json({ message: 'Account activated successfully.' });
+          });
+        });
+      } catch (hashErr) {
+        console.error('Password hashing error:', hashErr);
+        return res.status(500).json({ message: 'Server error.' });
+      }
+    });
+  };
+
+  export const checkEmailIfExist = (req, res) => {
+    const { email } = req.query;
+    console.log("Checking email:", email);
+  
+    // Check if the email is already used in the activated users table (staffaccount)
+    const q = `SELECT * FROM staffaccount WHERE staff_email = ?`;
+    db.query(q, [email], (userErr, userResults) => {
+      if (userErr) {
+        console.error("User query error:", userErr);
+        return res.status(500).json({ error: "Server error" });
+      }
+  
+      if (userResults.length > 0) {
+        // Email is already activated, so it's in use
+        return res.status(200).json({ error: "Email is already in use" });
+      } else {
+        // Check the invitation table for this email
+        const invitationQuery = `SELECT * FROM invitation WHERE email = ?`;
+        db.query(invitationQuery, [email], (invErr, invResults) => {
+          if (invErr) {
+            console.error("Invitation query error:", invErr);
+            return res.status(200).json({ error: "Server error" });
+          }
+  
+          const now = new Date();
+  
+          if (invResults.length > 0) {
+            const invite = invResults[0];
+            const tokenExpires = new Date(invite.token_expires_at);
+  
+            // Check if there's a valid invitation:
+            // Here we assume that a valid invitation has not expired and hasn't been used.
+            if (tokenExpires > now && !invite.is_used) {
+              // A valid invitation is still pending for this email
+              return res.status(200).json({ error: "Activation link already sent" });
+            } else {
+              // The existing invitation is expired or has been marked as used.
+              return res.status(200).json({ valid: true, message: "This email is valid" });
+            }
+          } else {
+            // No invitation exists at all; the email is free to use.
+            return res.status(200).json({ valid: true, message: "This email is valid" });
+          }
+        });
+      }
+    });
+  };
+  
+
+  export const deleteInvite = (req,res)=>{
+    const {email} = req.query;
+
+    const q = `DELETE FROM invitation WHERE email = ?`
+
+    db.query(q, [email],(err,results)=>{
+        if(err) return res.send(err)
+        return res.json(results)
+    })
+  }
+
+  export const checkIfUnameExist =(req,res)=>{
+    const {uname} = req.query;
+    console.log(uname)
+
+    const q = `SELECT * FROM staffaccount WHERE staff_uname = ?`
+
+    db.query(q, [uname],(err,results)=>{
+        if(err) return res.send(err)
+        return res.json(results)
+    })
+  }
+
+  
+  export const newLink = (req, res) => {
+    const { token } = req.body; 
+  
+    // check if the token exists
+    const q = `SELECT * FROM invitation WHERE token = ?`;
+  
+    db.query(q, [token], (err, results) => {
+      if (err) {
+        console.error("New link query error:", err);
+        return res.status(500).json({ error: "Server error" });
+      }
+  
+      if (results.length === 0) {
+        return res.status(200).json({ error: "Invalid token" });
+      }
+  
+      const invite = results[0];
+      const { email, fname } = invite;
+  
+      // generate a new token and expiration
+      const newToken = generateToken(); 
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); 
+  
+      // update the token and expiration in DB
+      const updateQ = `
+        UPDATE invitation
+        SET token = ?, token_expires_at = ?, is_used = 0
+        WHERE email = ?
+      `;
+  
+      db.query(updateQ, [newToken, expiresAt, email], (updateErr, updateResults) => {
+        if (updateErr) {
+          console.error("Token update error:", updateErr);
+          return res.status(500).json({ error: "Failed to update token" });
+        }
+  
+        // send new activation email
+        const activationLink = `https://admin.tuplrc-cla.com/activate?token=${newToken}`;
+  
+        transporter.sendMail(
+          mailOptions(email, fname, activationLink),
+          (mailErr, info) => {
+            if (mailErr) {
+              console.error("Email error:", mailErr);
+              return res.status(500).json({ error: "Failed to send email" });
+            } else {
+              console.log("Email sent:", info.response);
+              return res.status(200).json({ success: true });
+            }
+          }
+        );
+      });
+    });
+  };
+  
