@@ -1,15 +1,15 @@
-export const mailOptions = (email, firstName, activationLink) => {
+export const resetEmail = (email, firstName, resetLink) => {
     return {
         from: process.env.USER_EMAIL,
         to: email,
-        subject: 'Invitation to Activate Your Account',
+        subject: 'Reset Password',
         html: `
            <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Account Activation</title>
+            <title>Reset Password</title>
             <style>
                 body {
                     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -129,26 +129,26 @@ export const mailOptions = (email, firstName, activationLink) => {
             <div class="email-wrapper">
                 <div class="email-container">
                     <div class="email-header">
-                        <h1>Activation</h1>
+                        <h1>Reset Password</h1>
                     </div>
                     <div class="email-body">
                         <p class="greeting">Hello ${firstName || 'there'},</p>
-                        <p class="message">You've been chosen to be a part of the Learning Resources Center. We're excited to have you on our community! To get started, please activate your account by clicking the button below.</p>
+                        <p class="message">We received a request that you want to recover your account. To proceed, please reset your password by clicking the button below.</p>
                         
                         <div class="button-container">
-                            <a href="${activationLink}" class="button">Activate Your Account</a>
+                            <a href="${resetLink}" class="button">Reset Password</a>
                         </div>
                         
                         <div class="expiry-note">
-                            <strong>Note:</strong> This invitation link will expire in 24 hours for security reasons. Please do not share this link to anyone.
+                            <strong>Note:</strong> This reset link will expire in 1 hour for security reasons. Please do not share this link to anyone.
                         </div>
                         
                         <p class="message">If the button above doesn't work, you can copy and paste this link into your browser:</p>
                         <div class="link-fallback">
-                            ${activationLink}
+                            ${resetLink}
                         </div>
                         
-                        <p class="signature">Welcome to CLA's Learning Resources Center!<br>CLA LRC Staff</p>
+                        <p class="signature"College of Liberal Arts - Learning Resources Center!<br>CLA LRC Staff</p>
                     </div>
                     <div class="email-footer">
                         <p>This is an automated message. Please do not reply to this email.</p>

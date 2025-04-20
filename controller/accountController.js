@@ -1,10 +1,11 @@
 import { db } from "../config/db.js";
 import { mailOptions } from "../email/activationEmail.js";
+import { resetEmail } from "../email/resetEmail.js";
 import { transporter } from "../mailer/mailer.js";
 import { generateToken } from "../utils/generateToken.js";
 import { logAuditAction } from "./auditController.js";
 import bcrypt from 'bcrypt';
-
+import jwt from 'jsonwebtoken';
 
 const saltRounds = 10;
 
@@ -106,14 +107,16 @@ const saltRounds = 10;
 export const getAccounts = (req,res)=>{
     const q = `
         SELECT 
-            staffaccount.staff_id, 
-            staffaccount.staff_uname, 
-            staffaccount.staff_lname, 
-            staffaccount.staff_fname,
-            staffaccount.staff_status,
-            roles.role_name
+            staffaccount.staff_id as userId, 
+            staffaccount.staff_uname as username, 
+            staffaccount.staff_lname as lastName, 
+            staffaccount.staff_fname as firstName,
+            staffaccount.staff_status as status,
+            roles.role_name as role,
+            roles.role_id as role_id
         FROM staffaccount
-        JOIN roles ON staffaccount.role_id = roles.role_id`
+        JOIN roles ON staffaccount.role_id = roles.role_id
+        WHERE roles.role_id = 2`
 
     
     db.query(q, (err,results)=>{
@@ -188,7 +191,17 @@ export const viewAccount = (req,res)=>{
     const keyword = req.query.keyword || '';
 
     const q = `
-    SELECT staff_id, staff_fname, staff_lname, staff_uname, role_id FROM staffaccount WHERE staff_id = ?`
+    SELECT 
+      sa.staff_id, 
+      sa.staff_fname, 
+      sa.staff_lname, 
+      sa.staff_uname, 
+      sa.staff_email, 
+      r.role_id,
+      r.role_name  
+    FROM staffaccount sa
+    JOIN roles r ON r.role_id = sa.role_id 
+    WHERE staff_id = ?`
 
 
     db.query(q,[id], (err,results)=>{
@@ -451,33 +464,72 @@ export const deactivateAccount = (req, res) => {
     });
 }
 
+export const resetPassword = (req,res)=>{
+  try {
+    
+      const {email,firstName} = req.body
+      console.log(req.params)
+      const token = generateToken(email);
+
+      const invValues = [
+          email,
+          token
+      ]
+
+      const query = `
+          INSERT INTO passwordreset (email, token) VALUES (?, ?)`;
+
+      db.query(query, invValues, (err, results) => {
+          if (err) {
+              console.error(err);
+              return res.status(500).send({ error: 'Database query failed' });
+          }
+  
+          // // Log the audit action
+          // logAuditAction(username, 'UPDATE', 'staffaccount', staffUname, 'active', JSON.stringify("Deactivated a user: " + staffUname));
+
+          const resetLink = `https://admin.tuplrc-cla.com/reset?token=${token}`;
+
+          // Send email
+          transporter.sendMail(resetEmail(email,firstName,resetLink), function(err, data) {
+              if (err) {
+                console.log("Error " + err);
+              } else {
+                console.log("Email sent successfully");
+                return res.status(200).json({ success: true, isSent: true, });
+              }
+            });
+          });
+  } catch (error) {
+      console.error('Unexpected error in invite endpoint:', error);
+      return res.status(500).json({ error: 'Server error' });
+  }
+}
+
 export const invite = (req,res)=>{
     try {
         const { 
-            fname,
-            lname,
-            uname,
-            role,
+            firstName,
+            lastName,
+            username,
+            role_id,
             email
          } = req.body;
         console.log(req.body)
 
-        const token = generateToken();
-        // Set expiry for 24 hours
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const token = generateToken(email);
 
         const invValues = [
-            fname,
-            lname,
-            uname,
-            role,
+            firstName,
+            lastName,
+            username,
+            role_id,
             email,
-            token,
-            expiresAt
+            token
         ]
 
         const query = `
-            INSERT INTO invitation (fname, lname, uname, role_id, email, token, token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+            INSERT INTO invitation (fname, lname, uname, role_id, email, token) VALUES (?, ?, ?, ?, ?, ?)`;
 
         db.query(query, invValues, (err, results) => {
             if (err) {
@@ -491,7 +543,7 @@ export const invite = (req,res)=>{
             const activationLink = `https://admin.tuplrc-cla.com/activate?token=${token}`;
 
             // Send email
-            transporter.sendMail(mailOptions(email,fname,activationLink), function(err, data) {
+            transporter.sendMail(mailOptions(email,firstName,activationLink), function(err, data) {
                 if (err) {
                   console.log("Error " + err);
                 } else {
@@ -507,33 +559,73 @@ export const invite = (req,res)=>{
 }
 
 export const verifyToken = async (req, res) => {
-    const { token } = req.query;
-    console.log('Received token:', token);
-  
-    if (!token) return res.status(400).json({ message: 'Token is required.' });
-  
-    const query = `SELECT * FROM invitation WHERE token = ? AND is_used = false`;
-  
-    db.query(query, [token], (err, results) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).send({ error: 'Database query failed' });
-      }
-  
-      if (results.length === 0) {
-        return res.status(400).json({ message: 'Invalid or already used token.' });
-      }
-  
-      const invitation = results[0];
-  
-      if (new Date(invitation.token_expires_at) < new Date()) {
-        return res.status(400).json({ message: 'Token expired.' });
-      }
-  
+  const { token } = req.query;
+  console.log('Received token:', token);
+
+  if (!token) return res.status(400).json({ message: 'Token is required.' });
+
+  const query = `SELECT * FROM invitation WHERE token = ? AND is_used = false`;
+
+  db.query(query, [token], (err, results) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).send({ error: 'Database query failed' });
+    }
+
+    if (results.length === 0) {
+      return res.status(400).json({ message: 'Invalid or already used token.' });
+    }
+
+    const invitation = results[0];
+
+    try {
+      // Verify the token
+      jwt.verify(token, process.env.JWT_SECRET);
+
+      // If successful, mark it as used and proceed
       return res.status(200).json({ message: 'Token is valid.', email: invitation.email });
-    });
-  };
-;
+    } catch (error) {
+      // Token verification failed or token expired
+      console.error("JWT Verification Error:", error.message);
+      return res.status(400).json({ message: 'Token expired or invalid.' });
+    }
+  });
+};
+
+export const verifyResetToken = async (req, res) => {
+  const { token } = req.query;
+  console.log('Received token:', token);
+
+  if (!token) return res.status(400).json({ message: 'Token is required.' });
+
+  const query = `SELECT * FROM passwordreset WHERE token = ? AND is_used = false`;
+
+  db.query(query, [token], (err, results) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).send({ error: 'Database query failed' });
+    }
+
+    if (results.length === 0) {
+      return res.status(400).json({ message: 'Invalid or already used token.' });
+    }
+
+    const account = results[0];
+
+    try {
+      // Verify the token
+      jwt.verify(token, process.env.JWT_SECRET);
+
+      // If successful, mark it as used and proceed
+      return res.status(200).json({ message: 'Token is valid.', email: account.email });
+    } catch (error) {
+      // Token verification failed or token expired
+      console.error("JWT Verification Error:", error.message);
+      return res.status(400).json({ message: 'Token expired or invalid.' });
+    }
+  });
+};
+
 
 export const activate = async (req, res) => {
     const { token, password } = req.body;
@@ -556,54 +648,124 @@ export const activate = async (req, res) => {
   
       const invitation = results[0];
   
-      if (new Date(invitation.token_expires_at) < new Date()) {
-        return res.status(400).json({ message: 'Token expired.' });
+      try {
+        // Verify the token
+        jwt.verify(token, process.env.JWT_SECRET);
+  
+        try {
+          // 1. Hash the password
+          const hashedPassword = await bcrypt.hash(password, 10);
+  
+          const insertValues = [
+              invitation.uname,
+              invitation.fname,
+              invitation.lname,
+              hashedPassword,
+              invitation.email,
+              invitation.role_id
+          ]
+    
+          // 2. Insert the user into the users table
+          const insertQuery = `
+              INSERT INTO staffaccount (
+                  staff_uname, 
+                  staff_fname,
+                  staff_lname,
+                  staff_password,
+                  staff_email,
+                  role_id) 
+              VALUES (?, ?, ?, ?, ?,?)`;
+  
+          db.query(insertQuery, insertValues, (insertErr) => {
+            if (insertErr) {
+              console.error('User creation failed:', insertErr);
+              return res.status(500).json({ message: 'Failed to create user.' });
+            }
+    
+            // 3. Update the invitation to mark it as used
+            const updateQuery = `UPDATE invitation SET is_used = true WHERE inv_id = ?`;
+            db.query(updateQuery, [invitation.inv_id], (updateErr) => {
+              if (updateErr) {
+                console.error('Failed to update invitation:', updateErr);
+                return res.status(500).json({ message: 'Failed to update invitation.' });
+              }
+    
+              return res.status(200).json({ message: 'Account activated successfully.' });
+            });
+          });
+        } catch (hashErr) {
+          console.error('Password hashing error:', hashErr);
+          return res.status(500).json({ message: 'Server error.' });
+        }
+      } catch (error) {
+        // Token verification failed or token expired
+        return res.status(400).json({ message: 'Token expired or invalid.' });
+      }
+    });
+  };
+
+  export const recoverAccount = async (req, res) => {
+    const { token, password } = req.body;
+  
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Token and password are required.' });
+    }
+  
+    const query = `SELECT * FROM passwordreset WHERE token = ?`;
+  
+    db.query(query, [token], async (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).send({ error: 'Database query failed' });
       }
   
+      if (results.length === 0) {
+        return res.status(400).json({ message: 'Invalid or already used token.' });
+      }
+  
+      const account = results[0];
+  
       try {
-        // 1. Hash the password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const insertValues = [
-            invitation.uname,
-            invitation.fname,
-            invitation.lname,
-            hashedPassword,
-            invitation.email,
-            invitation.role_id
-        ]
+        // Verify the token
+        jwt.verify(token, process.env.JWT_SECRET);
   
-        // 2. Insert the user into the users table
-        const insertQuery = `
-            INSERT INTO staffaccount (
-                staff_uname, 
-                staff_fname,
-                staff_lname,
-                staff_password,
-                staff_email,
-                role_id) 
-            VALUES (?, ?, ?, ?, ?,?)`;
-
-        db.query(insertQuery, insertValues, (insertErr) => {
-          if (insertErr) {
-            console.error('User creation failed:', insertErr);
-            return res.status(500).json({ message: 'Failed to create user.' });
-          }
+        try {
+          // 1. Hash the password
+          const hashedPassword = await bcrypt.hash(password, 10);
   
-          // 3. Update the invitation to mark it as used
-          const updateQuery = `UPDATE invitation SET is_used = true WHERE inv_id = ?`;
-          db.query(updateQuery, [invitation.inv_id], (updateErr) => {
-            if (updateErr) {
-              console.error('Failed to update invitation:', updateErr);
-              return res.status(500).json({ message: 'Failed to update invitation.' });
+          // 2. Insert the user into the users table
+          const insertQuery = `
+              UPDATE 
+                staffaccount
+              SET
+                staff_password = ?
+              WHERE
+                staff_email = ?
+              `;
+  
+          db.query(insertQuery, [hashedPassword,account.email], (insertErr) => {
+            if (insertErr) {
+              console.error('User creation failed:', insertErr);
+              return res.status(500).json({ message: 'Failed to create user.' });
             }
-  
-            return res.status(200).json({ message: 'Account activated successfully.' });
+            // 3. Update the invitation to mark it as used
+            const updateQuery = `UPDATE passwordreset SET is_used = true WHERE id = ?`;
+            db.query(updateQuery, [account.id], (updateErr) => {
+              if (updateErr) {
+                console.error('Failed to update invitation:', updateErr);
+                return res.status(500).json({ message: 'Failed to recover account.' });
+              }
+    
+              return res.status(200).json({ message: 'Account activated successfully.' });
+            });
           });
-        });
-      } catch (hashErr) {
-        console.error('Password hashing error:', hashErr);
-        return res.status(500).json({ message: 'Server error.' });
+        } catch (hashErr) {
+          console.error('Password hashing error:', hashErr);
+          return res.status(500).json({ message: 'Server error.' });
+        }
+      } catch (error) {
+        // Token verification failed or token expired
+        return res.status(400).json({ message: 'Token expired or invalid.' });
       }
     });
   };
@@ -631,20 +793,21 @@ export const activate = async (req, res) => {
             console.error("Invitation query error:", invErr);
             return res.status(200).json({ error: "Server error" });
           }
-  
-          const now = new Date();
-  
+          
           if (invResults.length > 0) {
             const invite = invResults[0];
-            const tokenExpires = new Date(invite.token_expires_at);
-  
-            // Check if there's a valid invitation:
-            // Here we assume that a valid invitation has not expired and hasn't been used.
-            if (tokenExpires > now && !invite.is_used) {
-              // A valid invitation is still pending for this email
-              return res.status(200).json({ error: "Activation link already sent" });
-            } else {
-              // The existing invitation is expired or has been marked as used.
+
+            try {
+              // Verify the token
+              jwt.verify(token, process.env.JWT_SECRET);
+              if(!invite.is_used){
+                return res.status(200).json({ error: "Activation link already sent" });
+              }
+        
+              // If successful, mark it as used and proceed
+              return res.status(200).json({ message: 'Token is valid.', email: invitation.email });
+            } catch (error) {
+              // Token verification failed or token expired
               return res.status(200).json({ valid: true, message: "This email is valid" });
             }
           } else {
@@ -669,12 +832,12 @@ export const activate = async (req, res) => {
   }
 
   export const checkIfUnameExist =(req,res)=>{
-    const {uname} = req.query;
-    console.log(uname)
+    const {username} = req.query;
+    console.log(username)
 
     const q = `SELECT * FROM staffaccount WHERE staff_uname = ?`
 
-    db.query(q, [uname],(err,results)=>{
+    db.query(q, [username],(err,results)=>{
         if(err) return res.send(err)
         return res.json(results)
     })
@@ -701,17 +864,16 @@ export const activate = async (req, res) => {
       const { email, fname } = invite;
   
       // generate a new token and expiration
-      const newToken = generateToken(); 
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); 
+      const newToken = generateToken(email); 
   
       // update the token and expiration in DB
       const updateQ = `
         UPDATE invitation
-        SET token = ?, token_expires_at = ?, is_used = 0
+        SET token = ?, is_used = 0
         WHERE email = ?
       `;
   
-      db.query(updateQ, [newToken, expiresAt, email], (updateErr, updateResults) => {
+      db.query(updateQ, [newToken, email], (updateErr, updateResults) => {
         if (updateErr) {
           console.error("Token update error:", updateErr);
           return res.status(500).json({ error: "Failed to update token" });

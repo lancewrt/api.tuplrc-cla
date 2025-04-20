@@ -1,7 +1,9 @@
-// utils.js
-import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
-export const generateToken = () => {
-  // Generates a 64-character hex string token.
-  return crypto.randomBytes(32).toString('hex');
+export const generateToken = (email) => {
+  const payload = { email };
+  const secret = process.env.JWT_SECRET;
+  const options = { expiresIn: '1h' }; // 1 hour
+
+  return jwt.sign(payload, secret, options);
 };
