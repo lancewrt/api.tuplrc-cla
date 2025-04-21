@@ -169,8 +169,7 @@ export const checkUsername = (req, res) => {
 };
 
 export const checkEmail = (req, res) => {
-    const { email } = req.params;
-    const { excludeId } = req.query;
+    const { excludeId, email } = req.query;
 
     let q = 'SELECT * FROM staffaccount WHERE staff_email = ?';
     const params = [email];
