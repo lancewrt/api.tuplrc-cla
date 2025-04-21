@@ -116,7 +116,7 @@ export const getAccounts = (req,res)=>{
             roles.role_id as role_id
         FROM staffaccount
         JOIN roles ON staffaccount.role_id = roles.role_id
-        WHERE roles.role_id = 2`
+        `
 
     
     db.query(q, (err,results)=>{
