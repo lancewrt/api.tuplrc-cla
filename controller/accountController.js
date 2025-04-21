@@ -376,7 +376,7 @@ export const editAccount = (req, res) => {
 
 export const activateAccount = (req, res) => {
     const id = req.params.id;
-    const username = req.body.staffUname;
+    const username = req.body.uname;
 
     // Step 1: Retrieve staff_uname from the database
     const selectQuery = `SELECT staff_uname FROM staffaccount WHERE staff_id = ?`;
