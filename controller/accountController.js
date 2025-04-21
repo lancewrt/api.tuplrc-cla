@@ -116,7 +116,7 @@ export const getAccounts = (req,res)=>{
             roles.role_id as role_id
         FROM staffaccount
         JOIN roles ON staffaccount.role_id = roles.role_id
-        WHERE roles.role_id = 2`
+        `
 
     
     db.query(q, (err,results)=>{
@@ -376,7 +376,7 @@ export const editAccount = (req, res) => {
 
 export const activateAccount = (req, res) => {
     const id = req.params.id;
-    const username = req.body.staffUname;
+    const username = req.body.uname;
 
     // Step 1: Retrieve staff_uname from the database
     const selectQuery = `SELECT staff_uname FROM staffaccount WHERE staff_id = ?`;
@@ -421,7 +421,8 @@ export const activateAccount = (req, res) => {
 
 export const deactivateAccount = (req, res) => {
     const id = req.params.id;
-    const username = req.body.staffUname;
+    const username = req.body.uname;
+    
 
     // Step 1: Retrieve staff_uname from the database
     const selectQuery = `SELECT staff_uname FROM staffaccount WHERE staff_id = ?`;

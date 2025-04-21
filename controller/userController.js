@@ -217,7 +217,7 @@ export const updateAccount = (req,res)=>{
         'staffaccount',
         null,
         null,
-        JSON.stringify("Updated an account: " + firstName + " " + lastName))
+        JSON.stringify("Edited an account: " + firstName + " " + lastName))
 
     db.query(q,[username,firstName,lastName,email,id],(err,results)=>{
         if(err) return res.send(err)
