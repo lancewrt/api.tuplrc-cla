@@ -514,9 +514,9 @@ export const invite = (req,res)=>{
             lastName,
             username,
             role_id,
-            email,
-            uname
+            email
          } = req.body;
+         const {uname} = req.query
         console.log(req.body)
 
         const token = generateToken(email);
@@ -546,11 +546,22 @@ export const invite = (req,res)=>{
             const activationLink = `https://admin.tuplrc-cla.com/activate?token=${token}`;
 
             // Send email
-            transporter.sendMail(mailOptions(email,firstName,activationLink), function(err, data) {
+            transporter.sendMail(mailOptions(email,firstName,username,activationLink), function(err, data) {
                 if (err) {
                   console.log("Error " + err);
+                  return res.status(400).json({ success: false });
                 } else {
                   console.log("Email sent successfully");
+                  
+                  logAuditAction(
+                    uname,
+                    'INSERT',
+                    'invitation',
+                    null,
+                    null,
+                    JSON.stringify("Sent an activation link to  " + email)
+                  )
+              
                   return res.status(200).json({ success: true });
                 }
               });

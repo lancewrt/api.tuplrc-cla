@@ -1,4 +1,4 @@
-export const mailOptions = (email, firstName, activationLink) => {
+export const mailOptions = (email, firstName, username, activationLink) => {
     return {
         from: process.env.USER_EMAIL,
         to: email,
@@ -129,11 +129,11 @@ export const mailOptions = (email, firstName, activationLink) => {
             <div class="email-wrapper">
                 <div class="email-container">
                     <div class="email-header">
-                        <h1>Activation</h1>
+                        <h1>Activate Your Account</h1>
                     </div>
                     <div class="email-body">
                         <p class="greeting">Hello ${firstName || 'there'},</p>
-                        <p class="message">You've been chosen to be a part of the Learning Resources Center. We're excited to have you on our community! To get started, please activate your account by clicking the button below.</p>
+                        <p class="message">You've been chosen to be a part of the Learning Resources Center. We're excited to have you on our community! To get started, please activate your account by clicking the button below. Your username for this account is <strong>${username}</strong>.</p>
                         
                         <div class="button-container">
                             <a href="${activationLink}" class="button">Activate Your Account</a>
