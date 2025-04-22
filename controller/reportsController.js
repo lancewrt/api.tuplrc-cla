@@ -33,21 +33,46 @@ export const fetchDetails = (req,res)=>{
     })
 }
 
-export const fetchReports = (req,res)=>{
-    const {id} = req.params;
-
-    console.log(id)
-    const q = `SELECT * from reports WHERE staff_id = ?`
-
-    db.query(q,[id],(err,results)=>{
-        if (err) {
-            console.error(err);
-            return res.status(500).send({ error: 'Database query failed' });
-        }
-
-        res.send(results)
-    })
-}
+export const fetchReports = (req, res) => {
+    const { id } = req.params;
+    const { role } = req.query;
+  
+    let q = '';
+    let params = [];
+  
+    console.log(id);
+  
+    // view all reports if youre the admin
+    if (role == 'admin') {
+      q = `SELECT 
+        r.report_id,
+        r.report_name,
+        r.report_description,
+        r.cat_id,
+        r.detail_id,
+        r.staff_id,
+        r.report_start_date,
+        r.report_end_date,
+        r.created_at,
+        r.filepath,
+        r.is_archived,
+        s.staff_uname
+      FROM reports r
+      JOIN staffaccount s ON r.staff_id = s.staff_id`;
+    } else {
+      q = `SELECT * FROM reports WHERE staff_id = ?`;
+      params.push(id)
+    }
+  
+    db.query(q, params, (err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send({ error: 'Database query failed' });
+      }
+  
+      res.send(results);
+    });
+  };
 
 export const fetchReport = (req,res)=>{
     const {id} = req.params;
