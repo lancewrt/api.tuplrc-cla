@@ -514,7 +514,8 @@ export const invite = (req,res)=>{
             lastName,
             username,
             role_id,
-            email
+            email,
+            uname
          } = req.body;
         console.log(req.body)
 
@@ -526,11 +527,12 @@ export const invite = (req,res)=>{
             username,
             role_id,
             email,
-            token
+            token,
+            uname
         ]
 
         const query = `
-            INSERT INTO invitation (fname, lname, uname, role_id, email, token) VALUES (?, ?, ?, ?, ?, ?)`;
+            INSERT INTO invitation (fname, lname, uname, role_id, email, token, referer) VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
         db.query(query, invValues, (err, results) => {
             if (err) {
@@ -663,7 +665,8 @@ export const activate = async (req, res) => {
               invitation.lname,
               hashedPassword,
               invitation.email,
-              invitation.role_id
+              invitation.role_id,
+              invitation.referer
           ]
     
           // 2. Insert the user into the users table
@@ -690,8 +693,9 @@ export const activate = async (req, res) => {
                 console.error('Failed to update invitation:', updateErr);
                 return res.status(500).json({ message: 'Failed to update invitation.' });
               }
-    
+              logAuditAction(invitation.referer, 'INSERT', 'staffaccount', null, null, JSON.stringify("Account created: " + invitation.uname));
               return res.status(200).json({ message: 'Account activated successfully.' });
+
             });
           });
         } catch (hashErr) {
