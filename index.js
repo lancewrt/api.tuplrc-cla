@@ -81,13 +81,6 @@ app.use('/api/validate-tup-id', validateTupId);
 app.use('/api/online-catalog', onlineCatalogRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/advanced-search', advancedSearchRoutes);
-app.post('/api/attendance-serialport', (req,res)=>{
-  const {id} = req.body;
-  console.log('Received id:', id);
-
-  // Emit the barcode data to all connected clients using Socket.IO
-  io.emit('attendance-data', id);
-});
 
 /*--------------check overdue resources using cron-------- */
 // check 
