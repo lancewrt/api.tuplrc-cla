@@ -81,7 +81,7 @@ app.use('/api/validate-tup-id', validateTupId);
 app.use('/api/online-catalog', onlineCatalogRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/advanced-search', advancedSearchRoutes);
-app.use('/api/attendance-serialport', (req,res)=>{
+app.post('/api/attendance-serialport', (req,res)=>{
   const {id} = req.body;
   console.log('Received id:', id);
 
