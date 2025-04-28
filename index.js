@@ -58,6 +58,13 @@ io.on('connection', (socket) => {
   });
 });
 
+app.use(express.json());
+app.use(cors({
+  origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com','http://localhost:3000'],
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  credentials: true
+}));   
+
 // Listen to attendance scanner
 const attendancePort = new SerialPort({
   path: 'COM4', // for attendance
@@ -117,18 +124,10 @@ circulationPort.on('data', (data) => {
   }
 });
 
-
 // Handle errors
 circulationPort.on('error', (err) => {
   console.error('Serial port error:', err.message);
 });
-
-app.use(express.json());
-app.use(cors({
-  origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com','http://localhost:3000'],
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  credentials: true
-}));    
 
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
