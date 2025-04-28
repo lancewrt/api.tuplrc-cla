@@ -63,71 +63,71 @@ app.use(cors({
   origin: ['https://admin.tuplrc-cla.com','https://www.tuplrc-cla.com','http://localhost:3000'],
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
   credentials: true
-}));   
+}));    
 
-// // Listen to attendance scanner
-// const attendancePort = new SerialPort({
-//   path: 'COM4', // for attendance
-//   baudRate: 9600, 
-//   autoOpen: true,
-// });
+// Listen to attendance scanner
+const attendancePort = new SerialPort({
+  path: 'COM4', // for attendance
+  baudRate: 9600, 
+  autoOpen: true,
+});
 
-// // When serial port is open
-// attendancePort.on('open', () => {
-//   console.log('Serial Port Opened: COM4');
-// });
+// When serial port is open
+attendancePort.on('open', () => {
+  console.log('Serial Port Opened: COM4');
+});
 
-// // Directly listen to 'data' events
-// attendancePort.on('data', (data) => {
-//   console.log('Raw data received from serial port:', data);
+// Directly listen to 'data' events
+attendancePort.on('data', (data) => {
+  console.log('Raw data received from serial port:', data);
 
-//   // Buffer to string if needed
-//   const stringData = data.toString('utf-8');
-//   console.log('String data:', stringData);
+  // Buffer to string if needed
+  const stringData = data.toString('utf-8');
+  console.log('String data:', stringData);
 
-//   // Send raw string data to all connected clients via Socket.IO
-//   io.emit('attendance-data', stringData);
-// });
+  // Send raw string data to all connected clients via Socket.IO
+  io.emit('attendance-data', stringData);
+});
 
-// // Handle errors
-// attendancePort.on('error', (err) => {
-//   console.error('Serial port error:', err.message);
-// });
+// Handle errors
+attendancePort.on('error', (err) => {
+  console.error('Serial port error:', err.message);
+});
 
-// // Listen to circulation scanner
-// const circulationPort = new SerialPort({
-//   path: 'COM5', // for circulation
-//   baudRate: 9600, 
-//   autoOpen: true,
-// });
+// Listen to circulation scanner
+const circulationPort = new SerialPort({
+  path: 'COM5', // for circulation
+  baudRate: 9600, 
+  autoOpen: true,
+});
 
-// // When serial port is open
-// circulationPort.on('open', () => {
-//   console.log('Serial Port Opened: COM5');
-// });
+// When serial port is open
+circulationPort.on('open', () => {
+  console.log('Serial Port Opened: COM5');
+});
 
-// // Directly listen to 'data' events
-// circulationPort.on('data', (data) => {
-//   console.log('Raw data received from serial port:', data);
+// Directly listen to 'data' events
+circulationPort.on('data', (data) => {
+  console.log('Raw data received from serial port:', data);
 
-//   // Buffer to string if needed
-//   const stringData = data.toString('utf-8').trim();
-//   console.log('String data:', stringData);
+  // Buffer to string if needed
+  const stringData = data.toString('utf-8').trim();
+  console.log('String data:', stringData);
 
-//   // Check if the data matches the pattern "TUPM-**-****"
-//   const regex = /^TUPM-\d{2}-\d{4}$/;
-//   if (regex.test(stringData)) {
-//     // If it match, emit 'circulation-data' event
-//     io.emit('patron-data', stringData);
-//   } else {
-//     io.emit('circulation-data', stringData);
-//   }
-// });
+  // Check if the data matches the pattern "TUPM-**-****"
+  const regex = /^TUPM-\d{2}-\d{4}$/;
+  if (regex.test(stringData)) {
+    // If it match, emit 'circulation-data' event
+    io.emit('patron-data', stringData);
+  } else {
+    io.emit('circulation-data', stringData);
+  }
+});
 
-// // Handle errors
-// circulationPort.on('error', (err) => {
-//   console.error('Serial port error:', err.message);
-// });
+// Handle errors
+circulationPort.on('error', (err) => {
+  console.error('Serial port error:', err.message);
+});
 
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
