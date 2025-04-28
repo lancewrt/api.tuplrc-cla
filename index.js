@@ -24,7 +24,6 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { approachingOverdue, checkOverdue } from './controller/overdueController.js';
 import { inactivePatron } from './routes/patronInactiveController.js';
-import { SerialPort } from 'serialport';
 
 dotenv.config();
 
@@ -66,70 +65,6 @@ app.use(cors({
   credentials: true
 }));    
 
-// Listen to attendance scanner
-const attendancePort = new SerialPort({
-  path: 'COM4', // for attendance
-  baudRate: 9600, 
-  autoOpen: true,
-});
-
-// When serial port is open
-attendancePort.on('open', () => {
-  console.log('Serial Port Opened: COM4');
-});
-
-// Directly listen to 'data' events
-attendancePort.on('data', (data) => {
-  console.log('Raw data received from serial port:', data);
-
-  // Buffer to string if needed
-  const stringData = data.toString('utf-8');
-  console.log('String data:', stringData);
-
-  // Send raw string data to all connected clients via Socket.IO
-  io.emit('attendance-data', stringData);
-});
-
-// Handle errors
-attendancePort.on('error', (err) => {
-  console.error('Serial port error:', err.message);
-});
-
-// Listen to circulation scanner
-const circulationPort = new SerialPort({
-  path: 'COM5', // for circulation
-  baudRate: 9600, 
-  autoOpen: true,
-});
-
-// When serial port is open
-circulationPort.on('open', () => {
-  console.log('Serial Port Opened: COM5');
-});
-
-// Directly listen to 'data' events
-circulationPort.on('data', (data) => {
-  console.log('Raw data received from serial port:', data);
-
-  // Buffer to string if needed
-  const stringData = data.toString('utf-8').trim();
-  console.log('String data:', stringData);
-
-  // Check if the data matches the pattern "TUPM-**-****"
-  const regex = /^TUPM-\d{2}-\d{4}$/;
-  if (regex.test(stringData)) {
-    // If it match, emit 'circulation-data' event
-    io.emit('patron-data', stringData);
-  } else {
-    io.emit('circulation-data', stringData);
-  }
-});
-
-// Handle errors
-circulationPort.on('error', (err) => {
-  console.error('Serial port error:', err.message);
-});
-
 app.use("/api/resources", resourceRoutes);
 app.use("/api/data", dataRoutes); 
 app.use("/api/user", userRoutes);
@@ -146,6 +81,13 @@ app.use('/api/validate-tup-id', validateTupId);
 app.use('/api/online-catalog', onlineCatalogRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/advanced-search', advancedSearchRoutes);
+app.use('/api/attendance-serialport', (req,res)=>{
+  const {id} = req.body;
+  console.log('Received id:', id);
+
+  // Emit the barcode data to all connected clients using Socket.IO
+  io.emit('attendance-data', id);
+});
 
 /*--------------check overdue resources using cron-------- */
 // check 
