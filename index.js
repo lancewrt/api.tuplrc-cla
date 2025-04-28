@@ -24,6 +24,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { approachingOverdue, checkOverdue } from './controller/overdueController.js';
 import { inactivePatron } from './routes/patronInactiveController.js';
+import { SerialPort } from 'serialport';
 
 dotenv.config();
 
