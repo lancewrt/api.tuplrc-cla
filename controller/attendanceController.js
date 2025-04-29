@@ -24,7 +24,7 @@ export const attendance = (req, res) => {
     const studentName = `${results[0].patron_fname} ${results[0].patron_lname}`;
 
     const logAttendanceQuery = "INSERT INTO attendance (patron_id) VALUES (?)";
-    db.query(logAttendanceQuery, [time, date, patronId], (err) => {
+    db.query(logAttendanceQuery, [patronId], (err) => {
       if (err) {
         console.error(err);
         return res.status(500).json({ success: false, message: "Failed to log attendance." });
