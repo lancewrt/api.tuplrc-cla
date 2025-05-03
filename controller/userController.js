@@ -198,7 +198,8 @@ export const updateAccount = (req,res)=>{
         username,
         firstName,
         lastName,
-        email
+        email,
+        role_id
     } = req.body
 
     const q = `
@@ -207,7 +208,8 @@ export const updateAccount = (req,res)=>{
             staff_uname = ?,
             staff_fname = ?,
             staff_lname = ?,
-            staff_email = ?
+            staff_email = ?,
+            role_id = ?
         WHERE staff_id = ?
     `
 
@@ -219,7 +221,7 @@ export const updateAccount = (req,res)=>{
         null,
         JSON.stringify("Edited an account: " + firstName + " " + lastName))
 
-    db.query(q,[username,firstName,lastName,email,id],(err,results)=>{
+    db.query(q,[username,firstName,lastName,email,role_id,id],(err,results)=>{
         if(err) return res.send(err)
            return res.json(results)
     })
