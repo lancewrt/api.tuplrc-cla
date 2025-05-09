@@ -848,19 +848,20 @@ const getNewsletterJournalResource = (id,res)=>{
     `SELECT 
         resources.resource_id,
         resources.type_id,
-        resources.resource_quantity,
-        resources.avail_id,
+        resources.original_resource_quantity,
+        rc.avail_id,
         resources.resource_title,
         resources.resource_published_date,
         resources.resource_description,
         resources.dept_id,
         journalnewsletter.topic_id,
-        resources.resource_is_circulation,
+        rc.resource_is_circulation,
         GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_names,
         journalnewsletter.jn_volume,
         journalnewsletter.jn_issue,
         journalnewsletter.filepath
     FROM resources
+    JOIN resource_copies rc ON rc.resource_id = resources.resource_id
     JOIN resourceauthors ON resourceauthors.resource_id = resources.resource_id
     JOIN author ON resourceauthors.author_id = author.author_id
     JOIN resourcetype ON resourcetype.type_id = resources.type_id
@@ -881,14 +882,15 @@ const getThesisResource = (id,res)=>{
         resources.type_id,
         resources.dept_id,
         resources.resource_description,
-        resources.resource_is_circulation,
+        rc.resource_is_circulation,
         resources.resource_published_date,
-        resources.resource_quantity,
-        resources.avail_id,
+        resources.original_resource_quantity,
+        rc.avail_id,
         resources.resource_title,
         GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_names,
         CONCAT(adviser.adviser_fname, ' ', adviser.adviser_lname) AS adviser_name
     FROM resources
+    JOIN resource_copies rc ON rc.resource_id = resources.resource_id
     JOIN resourceauthors ON resourceauthors.resource_id = resources.resource_id
     JOIN author ON resourceauthors.author_id = author.author_id
     JOIN resourcetype ON resources.type_id = resourcetype.type_id
