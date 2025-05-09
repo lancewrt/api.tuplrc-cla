@@ -63,13 +63,14 @@ export const overdueBooks = (req, res) => {
             p.tup_id,
             p.patron_id,
             CONCAT(p.patron_fname, ' ', p.patron_lname) as pname,
-            co.resource_id,
+            co.rc_id,
             r.resource_title,
             o.overdue_days
         FROM overdue o
         JOIN checkout co ON o.checkout_id = co.checkout_id
         JOIN patron p ON p.patron_id = co.patron_id
-        JOIn resources r ON r.resource_id = co.resource_id 
+        JOIN resources r ON r.resource_id = rc.resource_id 
+        JOIN resource_copies rc ON r.rc_id = co.rc_id
         LIMIT 5`;
     
     db.query(query, (error, results) => {
@@ -172,7 +173,8 @@ export const issuedBooks = (req, res) => {
         FROM 
             checkout cout
         JOIN patron p ON cout.patron_id = p.patron_id
-        JOIN resources r ON cout.resource_id = r.resource_id
+        JOIN resource_copies rc ON rc.rc_id = cout.rc_id
+        JOIN resources r ON r.resource_id = rc.resource_id
         WHERE cout.status = 'borrowed' OR cout.status = 'overdue'
         LIMIT 5;
     `;
@@ -201,8 +203,9 @@ export const popularChoices = (req, res) => {
         FROM 
             resources r
         JOIN book b ON b.resource_id = r.resource_id
-        JOIN checkout cout ON cout.resource_id = r.resource_id
-        WHERE r.resource_id = cout.resource_id
+        JOIN resource_copies rc ON rc.resource_id = r.resource_id
+        JOIN checkout cout ON cout.rc_id = rc.rc_id
+        WHERE rc.rc_id = cout.rc_id
         GROUP BY r.resource_title, r.resource_published_date, b.filepath, r.resource_id
         ORDER BY borrowed_times DESC
         LIMIT 5;`;

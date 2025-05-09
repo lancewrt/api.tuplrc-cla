@@ -8,59 +8,64 @@ import { authors } from "./dataController.js";
 export const checkoutSearch = async (req, res) => {
     const { query } = req.query;
     if (!query) {
-        return res.status(400).json({ error: 'Query parameter is required' });
-      }
-      console.log('Incoming query:', req.query);
+      return res.status(400).json({ error: 'Query parameter is required' });
+    }
+    console.log('Incoming query:', req.query);
+    
     try {
       const [results] = await (await dbPromise).execute(
         `
         SELECT 
-            b.book_isbn, 
-            b.filepath,
-            r.resource_title AS title, 
-            r.resource_quantity AS quantity, 
-            r.resource_id,
-            pub.pub_name,
-            r.resource_is_archived,
-            GROUP_CONCAT(DISTINCT CONCAT(a.author_fname, ' ', a.author_lname) ORDER BY a.author_lname SEPARATOR ', ') AS authors
+          b.book_isbn,
+          b.filepath,
+          r.resource_title AS title,
+          r.resource_quantity AS quantity,
+          r.resource_id,
+          pub.pub_name,
+          rc.rc_id,
+          rc.resource_is_archived,
+          GROUP_CONCAT(DISTINCT CONCAT(a.author_fname, ' ', a.author_lname) ORDER BY a.author_lname SEPARATOR ', ') AS authors
         FROM 
-            book b
+          book b
+        JOIN
+          resources r ON b.resource_id = r.resource_id
+        JOIN
+          resource_copies rc ON rc.resource_id = r.resource_id
+        LEFT JOIN
+          resourceauthors ra ON ra.resource_id = r.resource_id
         LEFT JOIN 
             publisher pub ON pub.pub_id = b.pub_id
-        INNER JOIN 
-            resources r ON b.resource_id = r.resource_id
-        INNER JOIN 
-            resourceauthors ra ON ra.resource_id = r.resource_id
-        INNER JOIN 
-            author a ON a.author_id = ra.author_id
-        WHERE 
-            (b.book_isbn LIKE ? OR r.resource_title LIKE ? OR r.resource_id LIKE ?)
-            AND r.resource_quantity > 0
-            AND r.resource_is_archived = 0
-        GROUP BY 
-            b.book_isbn, b.filepath, r.resource_id
+        LEFT JOIN
+          author a ON a.author_id = ra.author_id
+        WHERE
+          (b.book_isbn LIKE ? OR r.resource_title LIKE ? OR rc.rc_id LIKE ?)
+          AND rc.resource_is_archived = 0
+          AND rc.is_borrowed = 0
+          AND avail_id = 1
+        GROUP BY
+          rc.rc_id
         LIMIT 10;
-
         `,
-        [`${query}%`, `%${query}%`, `${query}`]
+        [`%${query}%`, `%${query}%`, `%${query}%`]
       );
       
       const covers = results.map(book => ({
         cover: book.filepath,
-        resource_id: (book.resource_id),
-        resource_title: (book.title),
-        resource_quantity: (book.quantity),
-        book_isbn: (book.book_isbn),
+        resource_id: book.resource_id,
+        resource_title: book.title,
+        resource_quantity: book.quantity,
+        book_isbn: book.book_isbn || 'N/A', // Handle null ISBN values
         authors: book.authors,
-        publisher: (book.pub_name) ,
-    }));
-
+        publisher: book.pub_name,
+        rc_id: book.rc_id
+      }));
+      
       res.json(covers);
     } catch (error) {
       console.error('Error fetching book suggestions:', error);
       res.status(500).send("Error fetching book suggestions");
     }
-};
+  };
 
 export const checkinSearch = async (req, res) => {
     const { query, patron_id } = req.query;
@@ -81,27 +86,28 @@ export const checkinSearch = async (req, res) => {
                 pub.pub_name,
                 r.resource_title AS title, 
                 r.resource_id,
+                rc.rc_id,
                 GROUP_CONCAT(DISTINCT CONCAT(a.author_fname, ' ', a.author_lname) ORDER BY a.author_lname SEPARATOR ', ') AS authors
             FROM 
                 book b
-            INNER JOIN 
+            JOIN 
                 resources r ON b.resource_id = r.resource_id
-            INNER JOIN 
+            JOIN 
+                resource_copies rc ON rc.resource_id = r.resource_id
+            JOIN 
                 resourceauthors ra ON ra.resource_id = r.resource_id
-            INNER JOIN 
+            JOIN 
                 author a ON a.author_id = ra.author_id
-            INNER JOIN
+            LEFT JOIN
                 publisher pub ON pub.pub_id = b.pub_id
-            INNER JOIN 
-                checkout c ON r.resource_id = c.resource_id
+            JOIN 
+                checkout c ON rc.rc_id = c.rc_id
             WHERE 
-                (b.book_isbn LIKE ? OR r.resource_title LIKE ?)
-                AND c.patron_id = ? AND (c.status = "borrowed" OR c.status = "overdue")
-            GROUP BY 
-                b.book_isbn, b.filepath, r.resource_id
-            LIMIT 10;
+                rc.rc_id = c.rc_id
+                AND rc.is_borrowed = 1  
+                AND c.patron_id = ?
             `,
-            [`%${query}%`, `%${query}%`, patron_id]
+            [patron_id]
         );
 
         const covers = results.map(book => ({
@@ -110,6 +116,7 @@ export const checkinSearch = async (req, res) => {
             resource_title: book.title,
             book_isbn: book.book_isbn,
             authors: book.authors,  
+            rc_id:book.rc_id,
             publisher: book.pub_name,
         }));
 
@@ -121,10 +128,10 @@ export const checkinSearch = async (req, res) => {
 };
 
 export const checkoutRecord = (req, res) => {
-    const { resource_id, patron_id } = req.query;
-    const query = 'SELECT checkout_id FROM checkout WHERE resource_id = ? AND patron_id = ? AND (status = "borrowed" OR status= "overdue") ';
+    const { rc_id, patron_id } = req.query;
+    const query = 'SELECT checkout_id FROM checkout WHERE rc_id = ? AND patron_id = ? AND (status = "borrowed" OR status= "overdue") ';
 
-    db.query(query, [resource_id, patron_id], (err, results) => {
+    db.query(query, [rc_id, patron_id], (err, results) => {
         if (err) {
         return res.status(500).json({ error: err.message });
         }
@@ -136,7 +143,7 @@ export const checkoutRecord = (req, res) => {
 };
 
 export const checkIn = async (req, res) => {
-    const { checkout_id, returned_date, patron_id, resource_id, username } = req.body;
+    const { checkout_id, returned_date, patron_id, resource_id, username, rc_id } = req.body;
 
     if (!checkout_id || !returned_date) {
         return res.status(400).json({ error: 'checkout_id and returned_date are required.' });
@@ -175,13 +182,14 @@ export const checkIn = async (req, res) => {
             'UPDATE resources SET resource_quantity = resource_quantity + 1 WHERE resource_id = ?';
         await db.query(incrementResourceQuery, [resource_id]);
 
-        // Check if checkout_id exists in the overdue table
-        const [overdueRecord] = await db.query('SELECT * FROM overdue WHERE checkout_id = ?', [checkout_id]);
-
-        if (overdueRecord.length > 0) {
-            // If it exists, delete it
-            await db.query('DELETE FROM overdue WHERE checkout_id = ?', [checkout_id]);
-        }
+        // Increment resource copies
+        const updateResourceCopies =
+            `UPDATE resource_copies 
+            SET 
+                is_borrowed = ?,
+                avail_id = ?
+            WHERE rc_id = ?`;
+        await db.query(updateResourceCopies, [0, 1, rc_id]);
 
         // Commit the transaction
         await db.query('COMMIT');
@@ -227,7 +235,7 @@ export const checkIn = async (req, res) => {
 };
 
 export const checkOut =  async (req, res) => {
-    const { checkout_date, checkout_due, resource_id, patron_id, username } = req.body;
+    const { checkout_date, checkout_due, resource_id, rc_id, patron_id, username } = req.body;
 
     if (!checkout_date || !checkout_due || !resource_id || !patron_id) {
         return res.status(400).json({
@@ -257,10 +265,20 @@ export const checkOut =  async (req, res) => {
 
         // Insert checkout record
         const [result] = await db.query(
-            'INSERT INTO checkout (checkout_date, checkout_due, resource_id, patron_id) VALUES (?, ?, ?, ?)',
-            [checkout_date, checkout_due, resource_id, patron_id]
+            'INSERT INTO checkout (checkout_date, checkout_due, rc_id, patron_id) VALUES (?, ?, ?, ?)',
+            [checkout_date, checkout_due, rc_id, patron_id]
         );
 
+        // Mark the specific resource copy as unavailable
+        await db.query(
+            `UPDATE resource_copies 
+            SET 
+                is_borrowed = ?,
+                avail_id = ?
+            WHERE rc_id = ?`,
+            [1, 4, rc_id] // or use 0 / FALSE / a status code depending on your schema
+        );
+  
         // Fetch the resource details
         const [resource] = await db.query(
             'SELECT resource_title, resource_quantity FROM resources WHERE resource_id = ?',

@@ -126,6 +126,101 @@ import { logAuditAction } from "./auditController.js";
 //     });
 // };
 
+// export const catalog = (req, res) => {
+//     const { keyword, type, dept, topic, isArchived } = req.query;
+//     console.log("Search Query:", keyword);
+//     console.log("Type Array:", type);
+//     console.log("Department Array:", dept);
+//     console.log("Topic Array:", topic);
+
+//     // Format search param with wildcards
+//     const searchParam = keyword ? `%${keyword}%` : '%';
+
+//     // WHERE clauses array
+//     let whereClauses = [`(resources.resource_title LIKE ? OR author.author_fname LIKE ? OR author.author_lname LIKE ?)`];
+//     let params = [searchParam, searchParam, searchParam];
+
+//     // Handle type filtering (ensure it's an array)
+//     if (type.length>0) {
+//         whereClauses.push(`resources.type_id IN (?)`);
+//         params.push(type);
+//     }
+
+//     // Handle department filtering (ensure it's an array)
+//     if (dept.length>0) {
+//         whereClauses.push(`resources.dept_id IN (?)`);
+//         params.push(dept);
+//     }
+
+//     // Handle topic filtering (ensure it's an array)
+//     if (topic.length>0) {
+//         whereClauses.push(`(book.topic_id IN (?) OR journalnewsletter.topic_id IN (?))`);
+//         params.push(topic, topic);
+//     }
+
+//     // Handle archive/unarchive
+//     if (isArchived) {
+//         whereClauses.push(`rc.resource_is_archived = ?`);
+//         params.push(isArchived);
+//     }
+
+//     // Combine WHERE clause
+//     const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+//     // SQL query
+//     const q = `
+//         SELECT 
+//             resources.resource_quantity,
+//             resources.resource_title,
+//             resources.resource_id, 
+//             resources.original_resource_quantity,
+//             resources.resource_quantity,
+//             resourcetype.type_name,
+//             department.dept_name,
+//             topic.topic_name,
+//             rc.resource_is_archived,
+//             resources.resource_published_date,
+//             CASE
+//                 WHEN resources.type_id = 1 THEN book.filepath
+//                 WHEN resources.type_id IN (2, 3) THEN journalnewsletter.filepath
+//                 ELSE NULL
+//             END AS filepath,
+//             GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_names 
+//         FROM resources
+//         JOIN resourcetype ON resourcetype.type_id = resources.type_id
+//         JOIN resource_copies rc ON resources.resource_id = rc.resource_id
+//         JOIN department ON department.dept_id = resources.dept_id
+//         LEFT JOIN book ON book.resource_id = resources.resource_id
+//         LEFT JOIN journalnewsletter ON journalnewsletter.resource_id = resources.resource_id
+//         LEFT JOIN topic ON COALESCE(book.topic_id, journalnewsletter.topic_id) = topic.topic_id
+//         LEFT JOIN resourceauthors ON resourceauthors.resource_id = resources.resource_id
+//         LEFT JOIN author ON resourceauthors.author_id = author.author_id
+//         ${whereClause}
+//         GROUP BY 
+//             resources.resource_id, 
+//             resources.resource_title, 
+//             resources.type_id, 
+//             resources.resource_quantity,
+//             resourcetype.type_name,
+//             department.dept_name,
+//             topic.topic_name,
+//             resources.resource_published_date
+//         ORDER BY resources.timestamp DESC
+//     `;
+
+//     console.log(q);
+//     console.log(params);
+
+//     // Execute query
+//     db.query(q, params, (err, results) => {
+//         if (err) {
+//             console.error(err);
+//             return res.status(500).json({ error: 'Database query failed' });
+//         }
+//         return res.json(results); // Send the response as JSON
+//     });
+// };
+
 export const catalog = (req, res) => {
     const { keyword, type, dept, topic, isArchived } = req.query;
     console.log("Search Query:", keyword);
@@ -160,7 +255,7 @@ export const catalog = (req, res) => {
 
     // Handle archive/unarchive
     if (isArchived) {
-        whereClauses.push(`resources.resource_is_archived = ?`);
+        whereClauses.push(`rc.resource_is_archived = ?`);
         params.push(isArchived);
     }
 
@@ -172,22 +267,23 @@ export const catalog = (req, res) => {
         SELECT 
             resources.resource_quantity,
             resources.resource_title,
-            resources.resource_is_archived,
             resources.resource_id, 
             resources.original_resource_quantity,
             resources.resource_quantity,
             resourcetype.type_name,
             department.dept_name,
             topic.topic_name,
+            rc.resource_is_archived,
             resources.resource_published_date,
             CASE
                 WHEN resources.type_id = 1 THEN book.filepath
                 WHEN resources.type_id IN (2, 3) THEN journalnewsletter.filepath
                 ELSE NULL
             END AS filepath,
-            GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_names 
+            MIN(CONCAT(author.author_fname, ' ', author.author_lname)) AS author_names 
         FROM resources
         JOIN resourcetype ON resourcetype.type_id = resources.type_id
+        JOIN resource_copies rc ON resources.resource_id = rc.resource_id
         JOIN department ON department.dept_id = resources.dept_id
         LEFT JOIN book ON book.resource_id = resources.resource_id
         LEFT JOIN journalnewsletter ON journalnewsletter.resource_id = resources.resource_id
@@ -220,6 +316,112 @@ export const catalog = (req, res) => {
     });
 };
 
+export const catalog2 = (req, res) => {
+    // SQL query
+    const q = `
+        SELECT 
+            resources.resource_title,
+            resources.resource_id, 
+            resources.original_resource_quantity,
+            resources.resource_quantity,
+            resourcetype.type_name,
+            department.dept_name,
+            topic.topic_name,
+            rc.resource_is_archived,
+            rc.rc_id,
+            rc.avail_id,
+            resources.resource_published_date,
+            CASE
+                WHEN resources.type_id = 1 THEN book.filepath
+                WHEN resources.type_id IN (2, 3) THEN journalnewsletter.filepath
+                ELSE NULL
+            END AS filepath,
+            GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS author_names 
+        FROM resources
+        JOIN resourcetype ON resourcetype.type_id = resources.type_id
+        JOIN resource_copies rc ON resources.resource_id = rc.resource_id
+        JOIN department ON department.dept_id = resources.dept_id
+        LEFT JOIN book ON book.resource_id = resources.resource_id
+        LEFT JOIN journalnewsletter ON journalnewsletter.resource_id = resources.resource_id
+        LEFT JOIN topic ON COALESCE(book.topic_id, journalnewsletter.topic_id) = topic.topic_id
+        LEFT JOIN resourceauthors ON resourceauthors.resource_id = resources.resource_id
+        LEFT JOIN author ON resourceauthors.author_id = author.author_id
+        GROUP BY 
+            rc.rc_id, 
+            resources.resource_title, 
+            resources.type_id, 
+            resources.resource_quantity,
+            resourcetype.type_name,
+            department.dept_name,
+            topic.topic_name,
+            resources.resource_published_date
+    `;
+
+    // Execute query
+    db.query(q, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Database query failed' });
+        }
+        return res.json(results); // Send the response as JSON
+    });
+};
+
+export const update = (req, res) => {
+    const { id } = req.params; // rc_id
+    const { availId, resourceId } = req.body;
+
+    const getCopy = `SELECT avail_id FROM resource_copies WHERE rc_id = ?`;
+
+    db.query(getCopy, [id], (getErr, getResults) => {
+        if (getErr) {
+            console.error(getErr);
+            return res.status(500).json({ error: 'Database query failed (resource_copies)' });
+        }
+
+        if (getResults.length === 0) {
+            return res.status(404).json({ error: 'Resource copy not found' });
+        }
+
+        const currentAvailId = getResults[0].avail_id;
+
+        // Update avail_id in resource_copies
+        const updateCopyQ = `
+            UPDATE resource_copies
+            SET avail_id = ?
+            WHERE rc_id = ?`;
+
+        db.query(updateCopyQ, [availId, id], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Database query failed (resource_copies)' });
+            }
+
+            let quantityUpdateSQL = null;
+
+            if (currentAvailId == 1 && availId != 1) {
+                // Change from available to not available: decrement
+                quantityUpdateSQL = `UPDATE resources SET resource_quantity = resource_quantity - 1 WHERE resource_id = ?`;
+            } else if (currentAvailId != 1 && availId == 1) {
+                // Change from not available to available: increment
+                quantityUpdateSQL = `UPDATE resources SET resource_quantity = resource_quantity + 1 WHERE resource_id = ?`;
+            }
+
+            if (quantityUpdateSQL) {
+                db.query(quantityUpdateSQL, [resourceId], (resErr, resResults) => {
+                    if (resErr) {
+                        console.error(resErr);
+                        return res.status(500).json({ error: 'Database query failed (resources)' });
+                    }
+
+                    return res.json({ message: 'Availability and quantity updated.', resResults });
+                });
+            } else {
+                return res.json({ message: 'Availability updated. No change in quantity.' });
+            }
+        });
+    });
+};
 
 export const barcodeData = (req,res)=>{
     const q = `
@@ -240,32 +442,26 @@ export const barcodeData = (req,res)=>{
         })
 }
 
-export const archive = (req,res)=>{
-    console.log(req.body)
-    const {id,resourceState,username} = req.body;
-    // updated avail_id
-    const availId = resourceState==1?4:1;
-    const oldValue = resourceState==1?'Unarchived':'Archived';
-    const newValue = resourceState==1?'Archived':'Unarchived';
+// export const archive = (req, res) => {
+//     const { id, resourceState, username } = req.body;
 
-    const q = `
-    UPDATE resources
-    SET resource_is_archived = ?
-    WHERE resource_id = ?`
+//     // Determine new archive status and corresponding availability
+//     const availId = resourceState == 1 ? 4 : 1; // 4 = archived, 1 = available
+//     const oldValue = resourceState == 1 ? 'Unarchived' : 'Archived';
+//     const newValue = resourceState == 1 ? 'Archived' : 'Unarchived';
 
-    db.query(q,[resourceState,id],(err,results)=>{
-        if(err) return res.send(err)
+//     // Step 1: Update resource_copies
+//     const updateCopiesQ = `
+//         UPDATE resource_copies
+//         SET resource_is_archived = ?
+//         WHERE resource_id = ?`;
+
+//     db.query(updateCopiesQ, [resourceState, id], (err, results) => {
+//         if (err) return res.status(500).send(err);
         
-        const availQ = `
-        UPDATE resources
-        SET avail_id = ?
-        WHERE resource_id = ?`
+//         logAuditAction(username, 'UPDATE', 'resources', id, oldValue, `Changed archive status to: ${newValue}`);
+//         return res.json({ message: `Resource ${newValue.toLowerCase()} adjusted`});
+        
+//     });
+// };
 
-        db.query(availQ,[availId,id],(err,results)=>{
-            if(err) return res.send(err)
-            
-            logAuditAction(username, 'UPDATE', 'resources', id, oldValue, JSON.stringify("Changed archive status to: " + newValue));
-            return res.json(results)
-        })
-    })
-}

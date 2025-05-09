@@ -4,42 +4,84 @@ import fs, { stat } from 'fs';
 export const resources = async (req, res) => {
     const resource = req.body;
 
-    //check first if resource exist 
-    const resourceExists =await checkResourceIfExist(resource.resource_title)
+    try {
+        // Check first if resource exists
+        const resourceExists = await checkResourceIfExist(resource.resource_title);
 
-    if (resourceExists) {
-        console.log('Resource already exists.');
-        return res.send({ status: 409, message: `Resource with a title "${resource.resource_title}" already exists. Skipping insertion.` });
-    }
+        if (resourceExists) {
+            console.log('Resource already exists.');
+            return res.send({ 
+                status: 409, 
+                message: `Resource with a title "${resource.resource_title}" already exists. Skipping insertion.` 
+            });
+        }
 
-    const q = `
-    INSERT INTO 
-        resources (resource_title, resource_description, resource_published_date, original_resource_quantity, resource_quantity, resource_is_circulation, dept_id, type_id, avail_id) 
-    VALUES (?,?,?,?,?,?,?,?,?)`;
+        const q = `
+            INSERT INTO resources (
+                resource_title, resource_description, resource_published_date, 
+                original_resource_quantity, resource_quantity, dept_id, type_id
+            ) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
 
-    const values = [
-        resource.resource_title,
-        resource.resource_description || '',
-        resource.resource_published_date,
-        resource.resource_quantity,
-        resource.resource_quantity,
-        resource.resource_is_circulation,
-        resource.dept_id,
-        resource.type_id,
-        resource.avail_id
-    ];
-  
-    db.query(q, values, (err, results) => {
-      if (err) {
-        console.error("Error syncing resources:", err);
-        return res.status(500).send("Failed to sync resources.");
-      } else {
-        const insertedId = results.insertId; // Get the ID of the inserted row
+        const values = [
+            resource.resource_title,
+            resource.resource_description || '',
+            resource.resource_published_date,
+            resource.resource_quantity,
+            resource.resource_quantity,
+            resource.dept_id,
+            resource.type_id
+        ];
+
+        // Wrap db.query in a Promise so we can await it
+        const insertedId = await new Promise((resolve, reject) => {
+            db.query(q, values, (err, results) => {
+                if (err) {
+                    return reject(err);
+                }
+                resolve(results.insertId);
+            });
+        });
+
+        // Now await insertCopies
+        await insertCopies(resource.resource_is_circulation, insertedId, resource.resource_quantity);
+
         console.log("Resource synced successfully with ID:", insertedId);
         res.status(200).json({ message: "Resource synced successfully.", resource_id: insertedId });
-      }
-    });
-}
+    } catch (error) {
+        console.error("Error syncing resources:", error);
+        res.status(500).send("Failed to sync resources.");
+    }
+};
+
+export const insertCopies = async (isCirculation, availId, quantity) => {
+    const q = `
+        INSERT INTO resource_copies (resource_is_circulation, resource_id) 
+        VALUES (?, ?)
+    `;
+
+    const values = [
+        isCirculation === 1 ? 1 : 0,
+        availId
+    ];
+
+    const insertPromises = [];
+
+    for (let i = 0; i < quantity; i++) {
+        insertPromises.push(new Promise((resolve, reject) => {
+            db.query(q, values, (err, results) => {
+                if (err) {
+                    console.error(`Error inserting copy #${i + 1} for resourceId ${availId}:`, err);
+                    return reject(err);
+                }
+                resolve(results);
+            });
+        }));
+    }
+
+    return Promise.all(insertPromises);
+};
 
 export const adviser = async (req,res)=>{
     const {adviser, resourceId} = req.body;

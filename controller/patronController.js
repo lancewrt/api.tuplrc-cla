@@ -87,23 +87,21 @@ export const borrowers = (req, res) => {
     const { page = 1, limit = 10, query = '' } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    console.log('Query:', query);
+    let whereClause = '';
+    const queryParams = [];
 
-    let whereQuery = '';
-    if (query === 'returned' || query === 'borrowed' || query === 'overdue') {
-        whereQuery = `WHERE c.status = '${query}'`;
+    if (['returned', 'borrowed', 'overdue'].includes(query)) {
+        whereClause = 'WHERE c.status = ?';
+        queryParams.push(query);
     }
-
-    console.log('Where Clause:', whereQuery);
 
     const countQuery = `
         SELECT COUNT(*) AS totalCount 
         FROM checkout c
         INNER JOIN patron p ON p.patron_id = c.patron_id
-        INNER JOIN resources r ON c.resource_id = r.resource_id
         INNER JOIN course ON p.course_id = course.course_id
         LEFT JOIN checkin ci ON c.checkout_id = ci.checkout_id
-        ${whereQuery}
+        ${whereClause}
     `;
 
     const dataQuery = `
@@ -132,7 +130,9 @@ export const borrowers = (req, res) => {
         INNER JOIN 
             checkout c ON p.patron_id = c.patron_id
         INNER JOIN 
-            resources r ON c.resource_id = r.resource_id
+            resource_copies rc ON c.rc_id = rc.rc_id
+        INNER JOIN 
+            resources r ON r.resource_id = rc.resource_id
         INNER JOIN 
             course ON p.course_id = course.course_id
         INNER JOIN 
@@ -141,17 +141,17 @@ export const borrowers = (req, res) => {
             author a ON a.author_id = ra.author_id
         LEFT JOIN 
             checkin ci ON c.checkout_id = ci.checkout_id
-        ${whereQuery}
+        ${whereClause}
         GROUP BY 
-            c.checkout_id, r.resource_id, p.tup_id
+            c.checkout_id, rc.rc_id, p.tup_id
         ORDER BY 
             status_category, 
             c.checkout_date DESC
-        LIMIT ? OFFSET ?;
-
+        LIMIT ? OFFSET ?
     `;
 
-    db.query(countQuery, (err, countResult) => {
+    // Run count query
+    db.query(countQuery, queryParams, (err, countResult) => {
         if (err) {
             console.error(err);
             return res.status(500).send({ error: 'Database error', details: err.message });
@@ -159,7 +159,8 @@ export const borrowers = (req, res) => {
 
         const totalCount = countResult[0].totalCount;
 
-        db.query(dataQuery, [parseInt(limit), parseInt(offset)], (err, results) => {
+        // Run data query with pagination
+        db.query(dataQuery, [...queryParams, parseInt(limit), offset], (err, results) => {
             if (err) {
                 console.error(err);
                 return res.status(500).send({ error: 'Database error', details: err.message });
@@ -169,6 +170,7 @@ export const borrowers = (req, res) => {
         });
     });
 };
+
 
 export const patron = (req, res) => {
     const q = `SELECT 
@@ -216,6 +218,7 @@ export const checkIn = (req, res) => {
                     p.patron_fname,
                     p.patron_lname,
                     p.patron_email,
+                    p.status,
                     p.category,
                     cr.course_name,
                     COUNT(c.checkout_id) AS total_checkouts

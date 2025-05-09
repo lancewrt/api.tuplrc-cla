@@ -11,9 +11,10 @@ export const featuredBooks = (req, res) => {
         GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS authors
     FROM resourceauthors
     JOIN resources ON resourceauthors.resource_id = resources.resource_id
+    JOIN resource_copies rc ON rc.resource_id = resources.resource_id
     JOIN author ON resourceauthors.author_id = author.author_id
     JOIN book ON book.resource_id = resources.resource_id
-    WHERE resources.type_id = '1' AND resources.resource_is_archived = 0
+    WHERE resources.type_id = '1' AND rc.resource_is_archived = 0
     GROUP BY resources.resource_id, resources.resource_title, book.filepath
     ORDER BY RAND()
     LIMIT 10
@@ -49,8 +50,9 @@ export const mostBorrowed = (req,res)=>{
         FROM 
             resources r
         JOIN book b ON b.resource_id = r.resource_id
-        JOIN checkout cout ON cout.resource_id = r.resource_id
-        WHERE r.resource_is_archived = 0
+        JOIN resource_copies rc ON r.resource_id = rc.resource_id
+        JOIN checkout cout ON cout.rc_id = rc.rc_id
+        WHERE rc.resource_is_archived = 0
         GROUP BY r.resource_title, r.resource_published_date, r.resource_id
         ORDER BY borrowed_times DESC
         LIMIT 8`
@@ -78,7 +80,8 @@ export const featuredDepartment = (req,res)=>{
     JOIN resources ON resourceauthors.resource_id = resources.resource_id
     JOIN author ON resourceauthors.author_id = author.author_id
     JOIN book ON book.resource_id = resources.resource_id
-    WHERE resources.dept_id = '4' AND resources.resource_is_archived = 0
+    JOIN resource_copies rc ON rc.resource_id = resources.resource_id
+    WHERE resources.dept_id = '4' AND rc.resource_is_archived = 0
     GROUP BY resources.resource_id, resources.resource_title, book.filepath
     ORDER BY RAND()
     LIMIT 10
@@ -111,7 +114,7 @@ export const getSearch = (req, res) => {
     // Format search param with wildcards
     const searchParam = search ? `%${search}%` : '%';
 
-    let whereClauses = [`(resources.resource_title LIKE ? OR author.author_fname LIKE ? OR author.author_lname LIKE ?) AND resources.resource_is_archived = 0`];
+    let whereClauses = [`(resources.resource_title LIKE ? OR author.author_fname LIKE ? OR author.author_lname LIKE ?) AND rc.resource_is_archived = 0`];
     let params = [searchParam, searchParam, searchParam];
 
     if (type.length > 0) {
@@ -151,6 +154,7 @@ export const getSearch = (req, res) => {
             ORDER BY author.author_id ASC
             LIMIT 1) AS authors 
         FROM resources
+        LEFT JOIN resource_copies rc ON rc.resource_id = resources.resource_id
         LEFT JOIN book ON book.resource_id = resources.resource_id
         LEFT JOIN journalnewsletter ON journalnewsletter.resource_id = resources.resource_id
         LEFT JOIN resourceauthors ON resourceauthors.resource_id = resources.resource_id
@@ -185,7 +189,7 @@ export const resourcesView = (req, res) => {
         resources.original_resource_quantity,
         resources.resource_published_date,
         resources.resource_id,
-        resources.resource_is_circulation,
+        rc.resource_is_circulation,
         resources.type_id,
         department.dept_name,
         department.dept_shelf_no,
@@ -201,6 +205,7 @@ export const resourcesView = (req, res) => {
         topic.topic_row_no,
         GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS authors
     FROM resources
+    LEFT JOIN resource_copies rc ON rc.resource_id = resources.resource_id
     LEFT JOIN book ON resources.resource_id = book.resource_id
     LEFT JOIN journalnewsletter ON resources.resource_id = journalnewsletter.resource_id
     JOIN department ON resources.dept_id = department.dept_id
@@ -209,7 +214,7 @@ export const resourcesView = (req, res) => {
         OR journalnewsletter.topic_id = topic.topic_id
     LEFT JOIN resourceauthors ON resources.resource_id = resourceauthors.resource_id
     LEFT JOIN author ON resourceauthors.author_id = author.author_id
-    WHERE resources.resource_id = ? AND resources.resource_is_archived = 0
+    WHERE resources.resource_id = ? AND rc.resource_is_archived = 0
     GROUP BY 
         resources.resource_id,
         department.dept_name,
@@ -239,11 +244,12 @@ export const resourcesView = (req, res) => {
                     END AS filepath,
                     GROUP_CONCAT(CONCAT(author.author_fname, ' ', author.author_lname) SEPARATOR ', ') AS authors
                 FROM resources
+                LEFT JOIN resource_copies rc ON rc.resource_id = resources.resource_id
                 LEFT JOIN resourceauthors ON resourceauthors.resource_id = resources.resource_id
                 LEFT JOIN author ON resourceauthors.author_id = author.author_id
                 LEFT JOIN book ON book.resource_id = resources.resource_id
                 LEFT JOIN journalnewsletter ON journalnewsletter.resource_id = resources.resource_id
-                WHERE resources.type_id = ? AND resources.resource_id != ? AND resources.resource_is_archived = 0
+                WHERE resources.type_id = ? AND resources.resource_id != ? AND rc.resource_is_archived = 0
                 GROUP BY resources.resource_id, resources.resource_title, resources.resource_description, resources.type_id
                 ORDER BY RAND()
                 LIMIT 5`;
