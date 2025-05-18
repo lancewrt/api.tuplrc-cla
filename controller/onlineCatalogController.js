@@ -14,7 +14,7 @@ export const featuredBooks = (req, res) => {
     JOIN resource_copies rc ON rc.resource_id = resources.resource_id
     JOIN author ON resourceauthors.author_id = author.author_id
     JOIN book ON book.resource_id = resources.resource_id
-    WHERE resources.type_id = '1' AND rc.resource_is_archived = 0
+    WHERE resources.type_id = '1' AND rc.avail_id != 5
     GROUP BY resources.resource_id, resources.resource_title, book.filepath
     ORDER BY RAND()
     LIMIT 10
@@ -52,7 +52,7 @@ export const mostBorrowed = (req,res)=>{
         JOIN book b ON b.resource_id = r.resource_id
         JOIN resource_copies rc ON r.resource_id = rc.resource_id
         JOIN checkout cout ON cout.rc_id = rc.rc_id
-        WHERE rc.resource_is_archived = 0
+        WHERE rc.avail_id != 5
         GROUP BY r.resource_title, r.resource_published_date, r.resource_id
         ORDER BY borrowed_times DESC
         LIMIT 8`
@@ -81,7 +81,7 @@ export const featuredDepartment = (req,res)=>{
     JOIN author ON resourceauthors.author_id = author.author_id
     JOIN book ON book.resource_id = resources.resource_id
     JOIN resource_copies rc ON rc.resource_id = resources.resource_id
-    WHERE resources.dept_id = '4' AND rc.resource_is_archived = 0
+    WHERE resources.dept_id = '4' AND rc.avail_id != 5
     GROUP BY resources.resource_id, resources.resource_title, book.filepath
     ORDER BY RAND()
     LIMIT 10
@@ -114,7 +114,7 @@ export const getSearch = (req, res) => {
     // Format search param with wildcards
     const searchParam = search ? `%${search}%` : '%';
 
-    let whereClauses = [`(resources.resource_title LIKE ? OR author.author_fname LIKE ? OR author.author_lname LIKE ?) AND rc.resource_is_archived = 0`];
+    let whereClauses = [`(resources.resource_title LIKE ? OR author.author_fname LIKE ? OR author.author_lname LIKE ?) AND rc.avail_id != 5`];
     let params = [searchParam, searchParam, searchParam];
 
     if (type.length > 0) {
@@ -214,7 +214,7 @@ export const resourcesView = (req, res) => {
         OR journalnewsletter.topic_id = topic.topic_id
     LEFT JOIN resourceauthors ON resources.resource_id = resourceauthors.resource_id
     LEFT JOIN author ON resourceauthors.author_id = author.author_id
-    WHERE resources.resource_id = ? AND rc.resource_is_archived = 0
+    WHERE resources.resource_id = ? AND rc.avail_id != 5
     GROUP BY 
         resources.resource_id,
         department.dept_name,
@@ -249,7 +249,7 @@ export const resourcesView = (req, res) => {
                 LEFT JOIN author ON resourceauthors.author_id = author.author_id
                 LEFT JOIN book ON book.resource_id = resources.resource_id
                 LEFT JOIN journalnewsletter ON journalnewsletter.resource_id = resources.resource_id
-                WHERE resources.type_id = ? AND resources.resource_id != ? AND rc.resource_is_archived = 0
+                WHERE resources.type_id = ? AND resources.resource_id != ? AND rc.avail_id != 5
                 GROUP BY resources.resource_id, resources.resource_title, resources.resource_description, resources.type_id
                 ORDER BY RAND()
                 LIMIT 5`;

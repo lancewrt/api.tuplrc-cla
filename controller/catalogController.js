@@ -227,6 +227,7 @@ export const catalog = (req, res) => {
     console.log("Type Array:", type);
     console.log("Department Array:", dept);
     console.log("Topic Array:", topic);
+    const archiveStatus = isArchived==1?5:1;
 
     // Format search param with wildcards
     const searchParam = keyword ? `%${keyword}%` : '%';
@@ -255,8 +256,8 @@ export const catalog = (req, res) => {
 
     // Handle archive/unarchive
     if (isArchived) {
-        whereClauses.push(`rc.resource_is_archived = ?`);
-        params.push(isArchived);
+        whereClauses.push(`rc.avail_id = ?`);
+        params.push(archiveStatus);
     }
 
     // Combine WHERE clause
@@ -273,7 +274,7 @@ export const catalog = (req, res) => {
             resourcetype.type_name,
             department.dept_name,
             topic.topic_name,
-            rc.resource_is_archived,
+            rc.avail_id,
             resources.resource_published_date,
             CASE
                 WHEN resources.type_id = 1 THEN book.filepath
@@ -327,7 +328,7 @@ export const catalog2 = (req, res) => {
             resourcetype.type_name,
             department.dept_name,
             topic.topic_name,
-            rc.resource_is_archived,
+            rc.avail_id,
             rc.rc_id,
             rc.avail_id,
             resources.resource_published_date,
@@ -442,11 +443,80 @@ export const barcodeData = (req,res)=>{
         })
 }
 
+export const archive = (req, res) => {
+    const { id, resourceState, username } = req.body;
+
+    const availId = resourceState == 1 ? 5 : 1;
+    const oldValue = resourceState == 1 ? 'Unarchived' : 'Archived';
+    const newValue = resourceState == 1 ? 'Archived' : 'Unarchived';
+
+    const getAll = `
+        SELECT * FROM resource_copies
+        WHERE resource_id = ?`;
+
+    db.query(getAll, [id], (err, results) => {
+        if (err) return res.status(500).send(err);
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'No resource copies found.' });
+        }
+
+        const updatePromises = results.map(resource => {
+            const currentAvailId = resource.avail_id;
+
+            // 🚫 Skip this resource if it's borrowed
+            if (currentAvailId == 4) {
+                return Promise.resolve('Skipped borrowed copy');
+            }
+
+            return new Promise((resolve, reject) => {
+                const updateCopyQ = `
+                    UPDATE resource_copies
+                    SET avail_id = ?
+                    WHERE rc_id = ?`;
+
+                db.query(updateCopyQ, [availId, resource.rc_id], (err) => {
+                    if (err) return reject(err);
+
+                    let quantityUpdateSQL = null;
+
+                    if (currentAvailId == 1 && availId != 1) {
+                        quantityUpdateSQL = `UPDATE resources SET resource_quantity = resource_quantity - 1 WHERE resource_id = ?`;
+                    } else if (currentAvailId != 1 && availId == 1) {
+                        quantityUpdateSQL = `UPDATE resources SET resource_quantity = resource_quantity + 1 WHERE resource_id = ?`;
+                    }
+
+                    if (quantityUpdateSQL) {
+                        db.query(quantityUpdateSQL, [id], (err) => {
+                            if (err) return reject(err);
+                            resolve('Availability and quantity updated.');
+                        });
+                    } else {
+                        resolve('Availability updated. No change in quantity.');
+                    }
+                });
+            });
+        });
+
+        Promise.all(updatePromises)
+            .then(() => {
+                logAuditAction(username, 'UPDATE', 'resources', id, oldValue, `Changed status to: ${newValue}`);
+                res.json({ message: `Resource ${newValue.toLowerCase()} successfully.` });
+            })
+            .catch(error => {
+                console.error(error);
+                res.status(500).json({ error: 'Failed to update availability or quantity.' });
+            });
+    });
+};
+
+
+
 // export const archive = (req, res) => {
 //     const { id, resourceState, username } = req.body;
 
 //     // Determine new archive status and corresponding availability
-//     const availId = resourceState == 1 ? 4 : 1; // 4 = archived, 1 = available
+//     const availId = resourceState == 1 ? 5 : 1; // 4 = archived, 1 = available
 //     const oldValue = resourceState == 1 ? 'Unarchived' : 'Archived';
 //     const newValue = resourceState == 1 ? 'Archived' : 'Unarchived';
 
@@ -464,4 +534,3 @@ export const barcodeData = (req,res)=>{
         
 //     });
 // };
-

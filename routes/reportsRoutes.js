@@ -3,7 +3,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { fetchCategory, fetchDetails, fetchExcel, fetchReport, fetchReports, generateReports, handleArchive, saveReport } from '../controller/reportsController.js';
+import { fetchCategory, fetchDetails, fetchExcel, fetchPDF, fetchReport, fetchReports, generateReports, handleArchive, saveReport } from '../controller/reportsController.js';
 
 // Define __dirname manually
 const __filename = fileURLToPath(import.meta.url);
@@ -31,21 +31,28 @@ const storage = multer.diskStorage({
 const upload = multer({ 
     storage: storage,
     fileFilter: (req, file, cb) => {
-      // Accept only Excel files
-      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      const allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // Excel
+        'application/pdf' // PDF
+      ];
+    
+      if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new Error('Only Excel files are allowed'), false);
+        cb(new Error('Only Excel and PDF files are allowed'), false);
       }
     }
 });
   
-
 router.get('/categories', fetchCategory)
 router.get('/details', fetchDetails)
-router.post('/', upload.single('report_file'),saveReport)
+router.post('/', upload.fields([
+  { name: 'report_file', maxCount: 1 },
+  { name: 'pdf_file', maxCount: 1 }
+]), saveReport);
 router.get('/generate-report', generateReports);
 router.get('/fetch-excel', fetchExcel);
+router.get('/fetch-pdf', fetchPDF);
 router.get('/view/:id', fetchReport);
 router.get('/:id', fetchReports);
 router.put('/archive', handleArchive)
