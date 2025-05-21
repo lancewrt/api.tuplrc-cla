@@ -23,7 +23,6 @@ export const checkoutSearch = async (req, res) => {
           r.resource_id,
           pub.pub_name,
           rc.rc_id,
-          rc.resource_is_archived,
           GROUP_CONCAT(DISTINCT CONCAT(a.author_fname, ' ', a.author_lname) ORDER BY a.author_lname SEPARATOR ', ') AS authors
         FROM 
           book b
@@ -39,7 +38,7 @@ export const checkoutSearch = async (req, res) => {
           author a ON a.author_id = ra.author_id
         WHERE
           (b.book_isbn LIKE ? OR r.resource_title LIKE ? OR rc.rc_id LIKE ?)
-          AND rc.resource_is_archived = 0
+          AND rc.avail_id != 5
           AND rc.is_borrowed = 0
           AND avail_id = 1
         GROUP BY
